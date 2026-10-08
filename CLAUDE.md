@@ -11,11 +11,11 @@ goes to production. Developers read the report and warn.
 
 ## Where the design lives
 
-Read these before making design decisions. They are written in Greek.
+Read these before making design decisions.
 
-- `docs/plan.md`: implementation plan. Start with the section "Πρώτη έκδοση".
+- `docs/plan.md`: implementation plan. Start with the section "First version".
 - `docs/tdd.md`: technical design. Data models, checks, agents, security.
-- `docs/prd.md`: requirements and first-version scope (section "Εκδόσεις").
+- `docs/prd.md`: requirements and first-version scope (section "Versions").
 - `docs/design.md`: background, catalogue of common mistakes, decisions.
 
 The documents describe the full design. The first version implements part of it.
@@ -139,8 +139,31 @@ count. Full definitions are in `docs/tdd.md`.
 
 ## Commands
 
-To be filled in during step 1, once the environment exists: how to install, how to
-run the tests, how to run `evaluate.py`.
+Windows, PowerShell. The package is `src/honeywagon/`. The virtual environment is
+`.venv/` and is not committed.
+
+Install, once:
+
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\python -m pip install -e ".[dev]"
+```
+
+Run the tests:
+
+```powershell
+.venv\Scripts\python -m pytest
+```
+
+Lint, format check and type check:
+
+```powershell
+.venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m ruff format --check .
+.venv\Scripts\python -m mypy
+```
+
+`evaluate.py` is added in step 2.
 
 ## Conventions
 
