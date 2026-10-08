@@ -24,7 +24,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 1 of 6: repo, Python environment, this file.**
+**Step 2 of 6: fixtures with planted mistakes, `expected.json`, a clean fixture, `evaluate.py`.**
 
 Update this line when a step is finished and reviewed.
 
