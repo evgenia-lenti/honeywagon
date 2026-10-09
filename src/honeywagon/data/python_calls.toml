@@ -34,6 +34,18 @@ network = [
 # Methods that run SQL, on any object. The statement is the first argument.
 database_methods = ["execute", "executemany", "executescript"]
 
+# Calls that open a database. The database is the first argument.
+database_connect = ["sqlite3.connect"]
+
+# Calls that read an environment variable. The name is the first argument.
+environment_reads = ["os.environ.get", "os.getenv"]
+# The mapping that holds the environment, read as os.environ["NAME"].
+environment = "os.environ"
+
+# Calls that turn a value into a number. What comes out cannot carry a command
+# or a statement, so it does not count as input of the tool.
+number_calls = ["int", "float"]
+
 # Methods that read or write a file, on any object.
 read_methods = ["read_text", "read_bytes"]
 write_methods = ["write_text", "write_bytes"]

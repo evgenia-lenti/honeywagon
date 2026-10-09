@@ -23,6 +23,14 @@ def shell_injection(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[
                 yield _hit(analysis, tool, effect.argument_line)
 
 
+@register("inject-sql")
+def sql_injection(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[Hit]:
+    for tool in analysis.tools:
+        for effect in tool.effects:
+            if effect.touch == "database" and effect.input_in_text:
+                yield _hit(analysis, tool, effect.argument_line)
+
+
 @register("tool-free-form-sql")
 def free_form_sql(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[Hit]:
     for tool in analysis.tools:

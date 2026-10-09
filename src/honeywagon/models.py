@@ -4,7 +4,7 @@ import hashlib
 from dataclasses import asdict, dataclass
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SEVERITIES = ("critical", "error", "warning", "suggestion", "nitpick")
 CONFIDENCES = ("high", "medium", "low")
@@ -20,6 +20,11 @@ TOUCHES = (
     "external_content",
 )
 BOUNDEDNESS = ("fixed", "parameterized", "free_form", "unknown")
+DATA_ACTIONS = ("read", "write", "delete", "schema")
+DATA_SCOPE_STATUSES = ("none", "known", "partial", "any", "unknown")
+RISK_TIERS = ("high", "medium", "low")
+# In the columns of a TableAccess: every column of the table.
+ALL_COLUMNS = "*"
 
 
 @dataclass(frozen=True)
@@ -60,6 +65,31 @@ class Location:
 
 
 @dataclass(frozen=True)
+class TableAccess:
+    """One table and one thing done to it. No columns means they are not known,
+    or that the action is on the table as a whole."""
+
+    table: str
+    action: str
+    columns: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DataScope:
+    """Which data a tool reaches, as far as its SQL could be read.
+
+    `none`: no database. `known`: every statement was read. `partial`: some
+    were. `any`: a statement, or a piece of one, comes from the input, so the
+    code sets no limit. `unknown`: nothing could be read.
+    """
+
+    status: str
+    database: str | None = None
+    database_variable: str | None = None
+    tables: tuple[TableAccess, ...] = ()
+
+
+@dataclass(frozen=True)
 class Capability:
     """One thing Claude may use: a tool allowed without asking, or a tool in code."""
 
@@ -69,7 +99,7 @@ class Capability:
     scope: str
     touches: tuple[str, ...]
     boundedness: str
-    data_scope: str
+    data_scope: DataScope
     requires_confirmation: bool | None
 
 
@@ -115,6 +145,32 @@ class CapabilityMap:
 
 
 @dataclass(frozen=True)
+class RiskReason:
+    """Why a part deserves attention, and the tools or hooks that cause it."""
+
+    key: str
+    tier: str
+    items: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RiskGroup:
+    """One part of the project that gives capabilities, named by its file."""
+
+    name: str
+    kind: str
+    tier: str
+    reasons: tuple[RiskReason, ...]
+
+
+@dataclass(frozen=True)
+class RiskMap:
+    """Where to look first. A guide for attention: it holds no finding."""
+
+    groups: tuple[RiskGroup, ...] = ()
+
+
+@dataclass(frozen=True)
 class Verdict:
     key: str
     text: str
@@ -130,6 +186,7 @@ class RunResult:
     layers_ran: tuple[str, ...]
     checks_ran: tuple[str, ...]
     capability_map: CapabilityMap
+    risk_map: RiskMap
     findings: tuple[Finding, ...]
     verdict: Verdict
     not_checked: tuple[NotChecked, ...]

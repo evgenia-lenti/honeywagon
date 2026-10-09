@@ -64,6 +64,38 @@ def test_what_the_layer_does_not_cover_is_always_reported() -> None:
     assert {item.reason for item in result.not_checked} >= set(NOT_COVERED)
 
 
+def test_tool_whose_sql_could_not_be_read_is_reported_as_not_checked(
+    tmp_path: Path,
+) -> None:
+    code = (
+        "import sqlite3\n\nfrom mcp.server import MCPServer\n\n"
+        'mcp = MCPServer("x")\n\n\n'
+        "@mcp.tool()\ndef report() -> list:\n"
+        '    return sqlite3.connect("x.db").execute(build_query()).fetchall()\n'
+    )
+    (tmp_path / "server.py").write_text(code)
+
+    result = run_audit(tmp_path)
+
+    assert ("report", "sql_not_read") in {
+        (item.what, item.reason) for item in result.not_checked
+    }
+
+
+def test_tools_whose_sql_was_read_are_not_reported_as_not_checked() -> None:
+    result = run_audit(fixture_project("mcp-customer-db"))
+
+    assert "sql_not_read" not in {item.reason for item in result.not_checked}
+
+
+def test_folder_without_agentic_artifact_has_an_empty_risk_map(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "README.md").write_text("# A website")
+
+    assert run_audit(tmp_path).risk_map.groups == ()
+
+
 def test_folder_without_agentic_artifact_is_reported_as_nothing_to_audit(
     tmp_path: Path,
 ) -> None:

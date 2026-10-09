@@ -46,3 +46,12 @@ def add_note(customer_id: int, note: str) -> str:
     except Exception:
         pass
     return "ok"
+
+
+@mcp.tool()
+def find_customer(name: str) -> list[tuple]:
+    """Find customers whose name contains the given text."""
+    with sqlite3.connect(DB_PATH) as conn:
+        return conn.execute(
+            f"SELECT id, name, email FROM customers WHERE name LIKE '%{name}%'"
+        ).fetchall()

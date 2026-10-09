@@ -27,6 +27,11 @@ def test_every_project_kind_has_a_fixture_with_mistakes() -> None:
     assert {item.project_kind for item in FIXTURES if item.expected} == PROJECT_KINDS
 
 
+# A fixture starts with three to five mistakes and gets one more when a new
+# check needs a place to be exercised. Beyond this it is time for a new fixture.
+MOST_MISTAKES = 8
+
+
 def test_there_is_a_fixture_without_mistakes() -> None:
     assert [item.name for item in FIXTURES if not item.expected] == ["clean-plugin"]
 
@@ -42,10 +47,10 @@ def test_fixture_is_well_formed(item: Fixture) -> None:
 
 
 @pytest.mark.parametrize("item", [f for f in FIXTURES if f.expected], ids=fixture_id)
-def test_fixture_has_three_to_five_distinct_mistakes(item: Fixture) -> None:
+def test_fixture_has_a_few_distinct_mistakes(item: Fixture) -> None:
     places = {(e.check_id, e.file, e.line) for e in item.expected}
 
-    assert 3 <= len(item.expected) <= 5
+    assert 3 <= len(item.expected) <= MOST_MISTAKES
     assert len(places) == len(item.expected)
 
 

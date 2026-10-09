@@ -403,6 +403,87 @@ def test_sql_with_parameters_is_not_flagged(make_project: ProjectMaker) -> None:
     assert run("tool-free-form-sql", project) == []
 
 
+# inject-sql
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "f\"SELECT * FROM notes WHERE title = '{value}'\"",
+        '"SELECT * FROM notes WHERE title = \'" + value + "\'"',
+        "\"SELECT * FROM notes WHERE title = '{}'\".format(value)",
+        "\"SELECT * FROM notes WHERE title = '%s'\" % value",
+    ],
+    ids=["f-string", "plus", "format", "percent"],
+)
+def test_tool_input_pasted_into_sql_is_found(
+    make_project: ProjectMaker, statement: str
+) -> None:
+    body = f'conn = sqlite3.connect("x.db")\nconn.execute({statement})\nreturn ""'
+    project = make_project(mcp_tool(body))
+
+    assert places("inject-sql", project) == [("server.py", BODY_LINE + 1)]
+    assert run("tool-free-form-sql", project) == []
+
+
+def test_sql_put_together_over_several_lines_is_found(
+    make_project: ProjectMaker,
+) -> None:
+    body = (
+        'conn = sqlite3.connect("x.db")\n'
+        'query = "SELECT * FROM notes WHERE 1 = 1"\n'
+        "query += f\" AND title = '{value}'\"\n"
+        "conn.execute(query)\n"
+        'return ""'
+    )
+    project = make_project(mcp_tool(body))
+
+    assert places("inject-sql", project) == [("server.py", BODY_LINE + 3)]
+
+
+def test_agent_tool_input_pasted_into_sql_is_found(make_project: ProjectMaker) -> None:
+    code = (
+        "from claude_agent_sdk import tool\n\n\n"
+        '@tool("find", "Find a note", {"title": str})\n'
+        "async def find(args):\n"
+        "    return connection.execute(\n"
+        "        f\"SELECT * FROM notes WHERE title = '{args['title']}'\"\n"
+        "    )\n"
+    )
+    project = make_project({"agent.py": code})
+
+    assert places("inject-sql", project) == [("agent.py", 7)]
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        '"SELECT * FROM notes WHERE title = ?", (value,)',
+        'f"SELECT * FROM {TABLE} WHERE title = ?", (value,)',
+        'f"SELECT * FROM notes LIMIT {int(value)}"',
+        "select(notes).where(notes.c.title == value)",
+    ],
+    ids=["parameters", "constant in the text", "number", "query object"],
+)
+def test_sql_that_keeps_input_out_of_its_text_is_not_flagged(
+    make_project: ProjectMaker, statement: str
+) -> None:
+    body = f'conn = sqlite3.connect("x.db")\nconn.execute({statement})\nreturn ""'
+    project = make_project(mcp_tool(body))
+
+    assert run("inject-sql", project) == []
+
+
+def test_whole_input_as_sql_is_the_free_form_check_and_not_this_one(
+    make_project: ProjectMaker,
+) -> None:
+    body = 'conn = sqlite3.connect("x.db")\nconn.execute(value)\nreturn ""'
+    project = make_project(mcp_tool(body))
+
+    assert run("inject-sql", project) == []
+    assert places("tool-free-form-sql", project) == [("server.py", TOOL_LINE)]
+
+
 # mcp-fetch-any-url
 
 

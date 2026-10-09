@@ -18,10 +18,12 @@ from honeywagon.models import (
     Finding,
     NotChecked,
     Origin,
+    RiskMap,
     RunResult,
     Verdict,
     finding_id,
 )
+from honeywagon.triage import risk_map
 
 LAYER = "deterministic"
 # What this layer never covers, or does not cover yet. Always reported.
@@ -34,6 +36,8 @@ NOT_COVERED = (
 )
 # Reported only when the project has tools written in code.
 NOT_COVERED_IN_CODE = ("called_functions",)
+# Data scopes that leave SQL of a tool unread.
+SQL_NOT_READ = ("partial", "unknown")
 
 
 def _finding(check: Check, hit: Hit, seen: Counter[str]) -> Finding:
@@ -74,6 +78,7 @@ def run_audit(root: Path) -> RunResult:
     findings: list[Finding] = []
     checks_ran: list[str] = []
     capabilities = CapabilityMap()
+    risks = RiskMap()
     verdict_key = "nothing_to_audit"
     triggered_by: tuple[str, ...] = ()
 
@@ -82,6 +87,7 @@ def run_audit(root: Path) -> RunResult:
     else:
         analysis = analyse(project)
         capabilities = capability_map(analysis)
+        risks = risk_map(capabilities)
         not_checked.extend(analysis.not_checked)
         seen: Counter[str] = Counter()
         for check in load_checks():
@@ -96,6 +102,14 @@ def run_audit(root: Path) -> RunResult:
         verdict_key, triggered_by = propose_verdict(findings)
         if analysis.tools:
             not_checked.extend(_not_covered(key) for key in NOT_COVERED_IN_CODE)
+        sql_not_read = [
+            capability.name
+            for capability in capabilities.capabilities
+            if capability.kind == "tool"
+            and capability.data_scope.status in SQL_NOT_READ
+        ]
+        if sql_not_read:
+            not_checked.append(NotChecked(", ".join(sql_not_read), "sql_not_read"))
         not_checked.extend(_not_covered(key) for key in NOT_COVERED)
 
     return RunResult(
@@ -105,6 +119,7 @@ def run_audit(root: Path) -> RunResult:
         layers_ran=(LAYER,) if kinds else (),
         checks_ran=tuple(checks_ran),
         capability_map=capabilities,
+        risk_map=risks,
         findings=tuple(findings),
         verdict=Verdict(
             key=verdict_key,

@@ -25,6 +25,10 @@ consequence = "Claude Code 2.1.257 and newer ignore this setting inside a projec
 title = "Input of a tool goes into a shell command"
 consequence = "Whoever controls the input, including text that the model read somewhere, can add their own commands and run them on the computer where the tool runs."
 
+[checks.inject-sql]
+title = "Input of a tool is pasted into the text of a SQL statement"
+consequence = "Whoever controls the input, including text that the model read somewhere, can change what the statement does: read other rows and tables, or change and delete data."
+
 [checks.tool-free-form-sql]
 title = "A tool runs any SQL it is given"
 consequence = "The model can read, change or delete anything in the database, not only what this tool was meant for. A single misleading message is enough."
@@ -109,6 +113,58 @@ yes = "yes"
 no = "no"
 unknown = "unknown"
 
+[data_scope]
+label = "data"
+any = "decided by the input, not limited by the code"
+unknown = "tables and columns could not be read"
+partial = "some SQL could not be read"
+no_tables = "no table"
+database = "database {name}"
+database_variable = "database from the variable {name}"
+database_unknown = "database unknown"
+all_columns = "all columns"
+columns_unknown = "columns not known"
+
+[data_actions]
+read = "reads"
+write = "writes"
+delete = "deletes rows"
+schema = "creates or changes the table"
+
+[risk]
+title = "Where to look first"
+intro = "A guide for attention, not a judgment. A part comes first because of what it can do, not because something is wrong with it."
+
+[risk_tiers]
+high = "Look first"
+medium = "Look next"
+low = "Look last"
+
+[risk_kinds]
+agent = "agent"
+code_tools = "tools in code"
+skill = "skill"
+settings = "settings"
+hooks = "hooks"
+mcp_servers = "MCP servers"
+
+[risk_reasons]
+free_form_input = "takes free-form input"
+runs_commands = "runs commands"
+changes_data = "changes or deletes data"
+data_not_limited = "reaches data that the code does not limit"
+data_access_unknown = "uses a database in a way that could not be read"
+any_command_allowed = "lets Claude run any command without asking"
+no_permission_prompts = "never asks before it acts"
+runs_by_itself = "runs by itself"
+uses_network = "uses the network"
+reads_data = "reads data"
+starts_program = "starts a program"
+allowed_without_asking = "lets Claude use tools without asking"
+sets_permission_mode = "sets the permission mode"
+runs_an_agent = "runs an agent"
+no_outside_effect = "touches nothing outside the program"
+
 [touches]
 filesystem_read = "reads files"
 filesystem_write = "writes files"
@@ -132,6 +188,7 @@ external_scanner = "The external scanner is not connected yet."
 dependency_vulnerabilities = "Known vulnerabilities of dependencies are not checked yet."
 dangerous_combination = "Needs judgment: whether private data, content from outside and a way out meet in one agent."
 called_functions = "The code reader looks inside each tool, not inside the functions that the tool calls."
+sql_not_read = "Some SQL of these tools is not written as constant text, so their tables and columns could not be read."
 file_type = "File type that the tool does not analyse."
 too_large = "File larger than 1 MB."
 not_text = "Not a text file."

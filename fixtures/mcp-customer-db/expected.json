@@ -19,6 +19,14 @@
       "contains": "def run_query(sql: str)"
     },
     {
+      "check_id": "inject-sql",
+      "file": "server.py",
+      "line": 56,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "FROM customers WHERE name LIKE"
+    },
+    {
       "check_id": "mcp-fetch-any-url",
       "file": "server.py",
       "line": 33,

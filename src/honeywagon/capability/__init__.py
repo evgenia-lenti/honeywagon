@@ -15,6 +15,7 @@ from honeywagon.capability.config_files import (
     read_mcp_servers,
     read_permission_modes,
 )
+from honeywagon.capability.data_scope import data_scope
 from honeywagon.capability.python_code import (
     AgentOptions,
     PythonModule,
@@ -28,6 +29,7 @@ from honeywagon.models import (
     AgentInfo,
     Capability,
     CapabilityMap,
+    DataScope,
     HookInfo,
     Location,
     McpServerInfo,
@@ -102,7 +104,7 @@ def _allowed_tool(tool: AllowedTool) -> Capability:
         scope="restricted" if tool.is_restricted else "unrestricted",
         touches=tuple(touches),
         boundedness="unknown",
-        data_scope="unknown",
+        data_scope=DataScope("unknown"),
         requires_confirmation=False,
     )
 
@@ -115,7 +117,7 @@ def _code_tool(tool: PythonTool) -> Capability:
         scope="unrestricted" if tool.boundedness == "free_form" else "restricted",
         touches=tool.touches,
         boundedness=tool.boundedness,
-        data_scope="unknown",
+        data_scope=data_scope(tool),
         requires_confirmation=None,
     )
 

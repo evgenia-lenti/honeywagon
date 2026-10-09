@@ -1,0 +1,25 @@
+# The risk map: how much attention each reason asks for.
+#
+# A part of the project gets the highest tier among its reasons: high, medium
+# or low. The order of the reasons here is the order they are shown in.
+# The texts shown to the creator are in text/<language>.toml.
+
+# Permission modes that switch every question off.
+bypass_modes = ["bypassPermissions"]
+
+[tiers]
+free_form_input = "high"
+runs_commands = "high"
+changes_data = "high"
+data_not_limited = "high"
+data_access_unknown = "high"
+any_command_allowed = "high"
+no_permission_prompts = "high"
+runs_by_itself = "high"
+uses_network = "medium"
+reads_data = "medium"
+starts_program = "medium"
+allowed_without_asking = "medium"
+sets_permission_mode = "medium"
+runs_an_agent = "medium"
+no_outside_effect = "low"

@@ -1,10 +1,20 @@
-"""The report a person reads: verdict, what the project can do, findings, gaps."""
+"""The report a person reads: verdict, what the project can do, where to look
+first, findings, gaps."""
 
 from itertools import groupby
 from typing import Any
 
 from honeywagon.datafiles import load_texts
-from honeywagon.models import SEVERITIES, CapabilityMap, Location, RunResult
+from honeywagon.models import (
+    ALL_COLUMNS,
+    RISK_TIERS,
+    SEVERITIES,
+    CapabilityMap,
+    DataScope,
+    Location,
+    RiskMap,
+    RunResult,
+)
 
 # Files that were not read are listed up to this number, then counted.
 MAX_LISTED_PER_REASON = 10
@@ -12,6 +22,56 @@ MAX_LISTED_PER_REASON = 10
 
 def _place(location: Location) -> str:
     return f"{location.file}:{location.line}"
+
+
+def _data(scope: DataScope, texts: dict[str, Any]) -> str:
+    """Describe which data a tool reaches, in one line."""
+    labels = texts["data_scope"]
+    by_table: dict[str, list[str]] = {}
+    for access in scope.tables:
+        what = texts["data_actions"][access.action]
+        if access.action in ("read", "write"):
+            if ALL_COLUMNS in access.columns:
+                what = f"{what} {labels['all_columns']}"
+            elif access.columns:
+                what = f"{what} {', '.join(access.columns)}"
+            else:
+                what = f"{what}, {labels['columns_unknown']}"
+        by_table.setdefault(access.table, []).append(what)
+    tables = [f"{table}: {'; '.join(what)}" for table, what in by_table.items()]
+
+    if scope.status == "any":
+        parts = [labels["any"]]
+    elif scope.status == "unknown":
+        parts = [labels["unknown"]]
+    else:
+        parts = tables or [labels["no_tables"]]
+        if scope.status == "partial":
+            parts.append(labels["partial"])
+
+    if scope.database_variable:
+        database = labels["database_variable"].format(name=scope.database_variable)
+    elif scope.database:
+        database = labels["database"].format(name=scope.database)
+    else:
+        database = labels["database_unknown"]
+    return f"{labels['label']}: {'; '.join(parts)}  ({database})"
+
+
+def _risks(risks: RiskMap, texts: dict[str, Any]) -> list[str]:
+    lines = [texts["risk"]["title"], f"  {texts['risk']['intro']}"]
+    for tier in RISK_TIERS:
+        groups = [group for group in risks.groups if group.tier == tier]
+        if not groups:
+            continue
+        lines.append(f"  {texts['risk_tiers'][tier]}")
+        for group in groups:
+            lines.append(f"    {group.name}  ({texts['risk_kinds'][group.kind]})")
+            for reason in group.reasons:
+                text = texts["risk_reasons"][reason.key]
+                items = f": {', '.join(reason.items)}" if reason.items else ""
+                lines.append(f"      - {text}{items}")
+    return lines
 
 
 def _capabilities(capabilities: CapabilityMap, texts: dict[str, Any]) -> list[str]:
@@ -36,6 +96,8 @@ def _capabilities(capabilities: CapabilityMap, texts: dict[str, Any]) -> list[st
             lines.append(
                 f"    {tool.name}  ({_place(tool.declared_in)})  {what}; {how}"
             )
+            if tool.data_scope.status != "none":
+                lines.append(f"        {_data(tool.data_scope, texts)}")
     if capabilities.mcp_servers:
         lines.append(f"  {labels['mcp_servers']}")
         for server in capabilities.mcp_servers:
@@ -86,6 +148,8 @@ def render_text(result: RunResult, language: str = "en") -> str:
 
     if result.project_kinds:
         lines += ["", *_capabilities(result.capability_map, texts)]
+    if result.risk_map.groups:
+        lines += ["", *_risks(result.risk_map, texts)]
 
     lines += ["", labels["findings"]]
     if not result.findings:

@@ -52,6 +52,11 @@ severity = "critical"
 fix_effort = "complex"
 kinds = ["mcp_server", "agent"]
 
+[inject-sql]
+severity = "critical"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+
 [tool-free-form-sql]
 severity = "critical"
 fix_effort = "complex"
