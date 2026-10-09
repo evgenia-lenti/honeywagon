@@ -79,7 +79,9 @@ def test_json_report_is_the_whole_result(capsys: pytest.CaptureFixture[str]) -> 
         "secret-in-file",
         "mcp-unpinned-server",
     }
-    assert [s["name"] for s in result["capability_map"]["mcp_servers"]] == ["issues"]
+    servers = [s["name"] for s in result["capability_map"]["mcp_servers"]]
+    assert servers == ["issues", "docs"]
+    assert result["looked_up"] == []
     assert result["capability_map"]["capabilities"][0]["data_scope"] == {
         "status": "unknown",
         "database": None,

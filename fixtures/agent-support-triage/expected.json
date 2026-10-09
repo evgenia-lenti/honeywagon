@@ -41,6 +41,14 @@
       "severity": "error",
       "layer": "model",
       "contains": "customers[args[\"email\"]]"
+    },
+    {
+      "check_id": "dep-security",
+      "file": "requirements.txt",
+      "line": 2,
+      "severity": "error",
+      "layer": "deterministic",
+      "contains": "requests=="
     }
   ]
 }

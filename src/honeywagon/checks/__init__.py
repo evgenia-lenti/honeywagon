@@ -2,6 +2,7 @@
 
 from honeywagon.checks import (
     agents,
+    dependencies,
     hooks,
     mcp_servers,
     permissions,
@@ -17,6 +18,7 @@ __all__ = [
     "Check",
     "Hit",
     "agents",
+    "dependencies",
     "hooks",
     "load_checks",
     "mcp_servers",

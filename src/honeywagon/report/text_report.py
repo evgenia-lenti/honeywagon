@@ -137,6 +137,8 @@ def render_text(result: RunResult, language: str = "en") -> str:
     lines.append(f"{labels['project_kinds']}: {kinds or none}")
     lines.append(f"{labels['layers_ran']}: {', '.join(result.layers_ran) or none}")
     lines.append(f"{labels['checks_ran']}: {', '.join(result.checks_ran) or none}")
+    if result.looked_up:
+        lines.append(f"{labels['looked_up']}: {', '.join(result.looked_up)}")
 
     lines += ["", f"{labels['proposed_verdict']}: {result.verdict.text}"]
     if result.verdict.partial:

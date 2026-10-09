@@ -1,0 +1,60 @@
+{
+  "recorded_on": "2026-10-09",
+  "source": "https://api.osv.dev/v1/query",
+  "packages": [
+    {
+      "ecosystem": "PyPI",
+      "name": "claude-agent-sdk",
+      "version": "0.2.164",
+      "advisories": []
+    },
+    {
+      "ecosystem": "PyPI",
+      "name": "mcp",
+      "version": "2.3.0",
+      "advisories": []
+    },
+    {
+      "ecosystem": "PyPI",
+      "name": "requests",
+      "version": "2.31.0",
+      "advisories": [
+        {
+          "id": "GHSA-9hjg-9r4m-mvj7",
+          "rating": "MODERATE",
+          "fixed_in": [
+            "2.32.4"
+          ]
+        },
+        {
+          "id": "GHSA-9wx4-h78v-vm56",
+          "rating": "MODERATE",
+          "fixed_in": [
+            "2.32.0"
+          ]
+        },
+        {
+          "id": "GHSA-gc5v-m9x4-r6x2",
+          "rating": "MODERATE",
+          "fixed_in": [
+            "2.33.0"
+          ]
+        }
+      ]
+    },
+    {
+      "ecosystem": "npm",
+      "name": "mcp-remote",
+      "version": "0.1.15",
+      "advisories": [
+        {
+          "id": "GHSA-6xpm-ggf7-wc3p",
+          "rating": "CRITICAL",
+          "fixed_in": [
+            "0.1.16"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -13,13 +13,17 @@ class Hit:
     """One place where a check found its mistake.
 
     The suggestion is the line as it should become. A check sets it only when
-    it knows the exact text.
+    it knows the exact text. A severity replaces the one of the check's
+    definition, for a check whose severity depends on what it found. The
+    values fill the places marked {name} in the check's consequence text.
     """
 
     file: str
     line: int
     evidence: str
     suggestion: str | None = None
+    severity: str | None = None
+    values: Mapping[str, str] | None = None
 
 
 CheckFunction = Callable[[Analysis, Mapping[str, Any]], Iterable[Hit]]

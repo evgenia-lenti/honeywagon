@@ -2,10 +2,10 @@
 
 import asyncio
 import json
-import urllib.request
 from pathlib import Path
 from typing import Any
 
+import requests
 from claude_agent_sdk import ClaudeAgentOptions, create_sdk_mcp_server, query, tool
 
 SLACK_BOT_TOKEN = "xoxb-FAKE-FIXTURE-NOT-A-REAL-TOKEN"
@@ -31,12 +31,12 @@ async def lookup_customer(args: dict[str, Any]) -> dict[str, Any]:
 
 @tool("post_message", "Post a message to a Slack channel", {"channel": str, "text": str})
 async def post_message(args: dict[str, Any]) -> dict[str, Any]:
-    request = urllib.request.Request(
+    requests.post(
         "https://slack.com/api/chat.postMessage",
-        data=json.dumps({"channel": args["channel"], "text": args["text"]}).encode(),
+        json={"channel": args["channel"], "text": args["text"]},
         headers={"Authorization": f"Bearer {SLACK_BOT_TOKEN}"},
+        timeout=10,
     )
-    urllib.request.urlopen(request)
     return text("sent")
 
 

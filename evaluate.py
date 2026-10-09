@@ -3,23 +3,35 @@
 Usage:
     python evaluate.py
     python evaluate.py --results <folder> [--layer deterministic|model]
+    python evaluate.py --online
+    python evaluate.py --record
 
 Without --results it runs the deterministic core on every fixture.
 
 <folder> holds one <fixture>.json per fixture: a JSON list of findings, or an
 object with a "findings" list. Each finding needs "check_id", "file" and "line".
+
+The core is given recorded answers of the OSV database, from
+fixtures/advisories.json, so that the numbers are the same on every run and no
+network is used. --online asks the database itself. --record asks it and
+writes the answers to that file.
 """
 
 import argparse
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
+from honeywagon.capability import analyse
+from honeywagon.deps.osv import OSV_QUERY_URL, Advisory, Lookup, osv_lookup
+from honeywagon.files import load_project
 from honeywagon.pipeline import run_audit
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
+ADVISORIES_FILE = FIXTURES_DIR / "advisories.json"
 LINE_TOLERANCE = 3
 LAYERS = ("deterministic", "model")
 
@@ -96,11 +108,68 @@ def load_findings(results_file: Path) -> list[Finding]:
     ]
 
 
-def run_core(fixture: Fixture) -> list[Finding]:
-    """Audit the fixture's project with the deterministic core."""
+def recorded_lookup(advisories_file: Path = ADVISORIES_FILE) -> Lookup:
+    """Return a lookup that answers from the recorded file, with no network.
+
+    A package that was never recorded gives None, like a lookup that failed.
+    """
+    data: Any = json.loads(advisories_file.read_text(encoding="utf-8"))
+    recorded = {
+        (entry["ecosystem"], entry["name"], entry["version"]): tuple(
+            Advisory(a["id"], a["rating"], tuple(a["fixed_in"]))
+            for a in entry["advisories"]
+        )
+        for entry in data["packages"]
+    }
+    return lambda ecosystem, name, version: recorded.get((ecosystem, name, version))
+
+
+def fixture_packages(fixtures: Sequence[Fixture]) -> list[tuple[str, str, str]]:
+    """List every dependency with an exact version that a fixture declares."""
+    packages = {
+        dependency.package
+        for fixture in fixtures
+        for dependency in analyse(load_project(fixture.project_dir)).dependencies
+        if dependency.version
+    }
+    return sorted(packages)
+
+
+def record_advisories(
+    fixtures: Sequence[Fixture], advisories_file: Path = ADVISORIES_FILE
+) -> None:
+    """Ask the OSV database about the fixtures' dependencies and save the answers."""
+    entries = []
+    for ecosystem, name, version in fixture_packages(fixtures):
+        advisories = osv_lookup(ecosystem, name, version)
+        if advisories is None:
+            raise SystemExit(f"The OSV database did not answer for {name} {version}.")
+        entries.append(
+            {
+                "ecosystem": ecosystem,
+                "name": name,
+                "version": version,
+                "advisories": [asdict(advisory) for advisory in advisories],
+            }
+        )
+    data = {
+        "recorded_on": date.today().isoformat(),
+        "source": OSV_QUERY_URL,
+        "packages": entries,
+    }
+    text = json.dumps(data, indent=2) + "\n"
+    advisories_file.write_text(text, encoding="utf-8", newline="\n")
+
+
+def run_core(fixture: Fixture, lookup: Lookup | None = None) -> list[Finding]:
+    """Audit the fixture's project with the deterministic core.
+
+    Without a lookup of its own it uses the recorded answers.
+    """
+    result = run_audit(fixture.project_dir, lookup or recorded_lookup())
     return [
         Finding(finding.check_id, finding.file, finding.line)
-        for finding in run_audit(fixture.project_dir).findings
+        for finding in result.findings
     ]
 
 
@@ -228,16 +297,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--layer", choices=LAYERS, help="count only the planted mistakes of this layer"
     )
+    parser.add_argument(
+        "--online",
+        action="store_true",
+        help="ask the OSV database itself, not the recorded answers. This sends "
+        "the names and versions of the fixtures' dependencies to api.osv.dev",
+    )
+    parser.add_argument(
+        "--record",
+        action="store_true",
+        help="ask the OSV database and write its answers to fixtures/advisories.json",
+    )
     args = parser.parse_args(argv)
     if args.results is not None and not args.results.is_dir():
         parser.error(f"not a folder: {args.results}")
 
+    fixtures = load_fixtures(FIXTURES_DIR)
+    if args.record:
+        record_advisories(fixtures)
+    lookup = osv_lookup if args.online else recorded_lookup()
+
     results = []
     fixtures_without_results = []
-    for fixture in load_fixtures(FIXTURES_DIR):
+    for fixture in fixtures:
         findings: list[Finding] = []
         if args.results is None:
-            findings = run_core(fixture)
+            findings = run_core(fixture, lookup)
         elif (results_file := args.results / f"{fixture.name}.json").is_file():
             findings = load_findings(results_file)
         else:

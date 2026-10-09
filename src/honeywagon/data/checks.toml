@@ -85,10 +85,18 @@ temporary_names = ["tmp_path", "tmpdir", "tmp_path_factory", "tempfile"]
 severity = "warning"
 fix_effort = "simple"
 kinds = ["plugin", "skill", "mcp_server", "agent"]
-# Commands that download a package and run it.
-launchers = ["npx", "bunx", "pnpx", "pnpm", "uvx", "pipx"]
-# Words between the launcher and the package name.
-subcommands = ["dlx", "exec", "run"]
+# The commands that download a package and run it are in dependencies.toml.
+
+# A dependency, or an MCP server that is downloaded, in a version with a
+# published security problem. Found only when the audit runs with --lookup.
+[dep-security]
+severity = "error"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+# Ratings of the database that make the finding critical in place of error.
+critical_ratings = ["CRITICAL"]
+# Shown in place of the fixed version when the database lists none.
+no_fix_mark = "-"
 
 [port-absolute-path]
 severity = "warning"

@@ -1,7 +1,7 @@
 """Work out what a project can do, once per audit, before the checks run."""
 
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TypeVar
 
@@ -23,6 +23,8 @@ from honeywagon.capability.python_code import (
     parse_python,
 )
 from honeywagon.datafiles import load_data
+from honeywagon.deps.manifests import Dependency, read_dependencies
+from honeywagon.deps.osv import Advisory, Lookup, Package, look_up_all
 from honeywagon.files import Project
 from honeywagon.guard.redact import safe_evidence
 from honeywagon.models import (
@@ -52,6 +54,13 @@ class Analysis:
     permission_modes: tuple[PermissionMode, ...]
     python: tuple[PythonModule, ...]
     not_checked: tuple[NotChecked, ...]
+    dependencies: tuple[Dependency, ...] = ()
+    # What the lookup said about each dependency with an exact version. Empty
+    # when no lookup was asked for. None for a package whose lookup failed.
+    advisories: Mapping[Package, tuple[Advisory, ...] | None] = field(
+        default_factory=dict
+    )
+    looked_up: bool = False
 
     @cached_property
     def tools(self) -> tuple[PythonTool, ...]:
@@ -75,8 +84,12 @@ def _keep(
     return tuple(kept)
 
 
-def analyse(project: Project) -> Analysis:
-    """Read the configuration files and the Python code of the project."""
+def analyse(project: Project, lookup: Lookup | None = None) -> Analysis:
+    """Read the configuration files and the Python code of the project.
+
+    The lookup asks about known security problems of dependencies. Without it
+    nothing leaves the computer.
+    """
     not_checked: list[NotChecked] = []
     allowed_tools = _keep(read_allowed_tools(project), not_checked)
     mcp_servers = _keep(read_mcp_servers(project), not_checked)
@@ -84,6 +97,8 @@ def analyse(project: Project) -> Analysis:
     # A file that cannot be parsed is already reported by the detection step.
     modules = (parse_python(file) for file in project.with_suffix(".py"))
     python = tuple(module for module in modules if module is not None)
+    dependencies = _keep(read_dependencies(project, mcp_servers), not_checked)
+    pinned = [dependency.package for dependency in dependencies if dependency.version]
     return Analysis(
         project=project,
         allowed_tools=allowed_tools,
@@ -92,6 +107,9 @@ def analyse(project: Project) -> Analysis:
         permission_modes=tuple(read_permission_modes(project)),
         python=python,
         not_checked=tuple(not_checked),
+        dependencies=dependencies,
+        advisories=look_up_all(pinned, lookup) if lookup else {},
+        looked_up=lookup is not None,
     )
 
 

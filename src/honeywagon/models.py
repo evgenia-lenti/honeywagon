@@ -185,6 +185,8 @@ class RunResult:
     project_kinds: tuple[str, ...]
     layers_ran: tuple[str, ...]
     checks_ran: tuple[str, ...]
+    # The package names and versions that were sent to the OSV database.
+    looked_up: tuple[str, ...]
     capability_map: CapabilityMap
     risk_map: RiskMap
     findings: tuple[Finding, ...]

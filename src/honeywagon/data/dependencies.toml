@@ -1,0 +1,14 @@
+# How the dependencies of a project are read.
+
+# Words between a launcher and the package name: pnpm dlx <package>.
+subcommands = ["dlx", "exec", "run"]
+
+# Programs that download a package and run it, and the registry each one uses.
+# The names of the registries are the ones the OSV database knows.
+[launchers]
+npx = "npm"
+bunx = "npm"
+pnpx = "npm"
+pnpm = "npm"
+uvx = "PyPI"
+pipx = "PyPI"

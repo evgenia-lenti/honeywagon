@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from honeywagon.classify import COUNTING_CONFIDENCES
+from honeywagon.deps.osv import osv_lookup
 from honeywagon.models import RunResult
 from honeywagon.pipeline import run_audit
 from honeywagon.report import render_json, render_text
@@ -37,11 +38,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="text",
         help="text for a person (default), json for a machine",
     )
+    parser.add_argument(
+        "--lookup",
+        action="store_true",
+        help="ask the OSV database about known security problems of the "
+        "dependencies. This sends their names and versions to api.osv.dev, "
+        "and nothing else. Without it nothing is sent anywhere",
+    )
     args = parser.parse_args(argv)
     if not args.folder.is_dir():
         parser.error(f"not a folder: {args.folder}")
 
-    result = run_audit(args.folder)
+    result = run_audit(args.folder, osv_lookup if args.lookup else None)
     report = render_json(result) if args.format == "json" else render_text(result)
     # Evidence can hold characters that the terminal's encoding cannot show.
     if isinstance(sys.stdout, io.TextIOWrapper):

@@ -17,6 +17,16 @@ def fixture_project(name: str) -> Path:
     return FIXTURES_DIR / name / "project"
 
 
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make any test that reaches for the network fail, loudly."""
+
+    def refuse(*args: object, **kwargs: object) -> None:
+        raise AssertionError("a test tried to use the network")
+
+    monkeypatch.setattr("urllib.request.urlopen", refuse)
+
+
 @pytest.fixture
 def make_project(tmp_path: Path) -> ProjectMaker:
     """Build a small project in a temporary folder from {path: content}."""

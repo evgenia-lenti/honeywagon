@@ -41,6 +41,14 @@
       "severity": "warning",
       "layer": "model",
       "contains": "Helps with work."
+    },
+    {
+      "check_id": "dep-security",
+      "file": ".mcp.json",
+      "line": 12,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "mcp-remote@"
     }
   ]
 }

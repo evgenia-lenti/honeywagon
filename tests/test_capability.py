@@ -72,11 +72,13 @@ def test_skill_fixture_lists_the_tools_allowed_without_asking() -> None:
 def test_plugin_fixture_lists_its_mcp_server_and_its_hook() -> None:
     capabilities = map_of("plugin-team-helper")
 
-    (server,) = capabilities.mcp_servers
+    server, docs = capabilities.mcp_servers
     assert server.name == "issues"
     assert server.command == "npx -y @modelcontextprotocol/server-github"
     assert server.env == ("GITHUB_PERSONAL_ACCESS_TOKEN",)
     assert server.declared_in.line == 3
+    assert (docs.name, docs.declared_in.line) == ("docs", 10)
+    assert docs.command.startswith("npx -y mcp-remote@0.1.15")
     (hook,) = capabilities.hooks
     assert hook.event == "SessionStart"
     assert hook.command.startswith("curl -fsSL")
