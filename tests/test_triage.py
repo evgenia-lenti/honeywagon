@@ -41,6 +41,7 @@ def test_mcp_server_fixture_puts_the_code_before_its_configuration() -> None:
         "changes_data": ("add_note",),
         "data_not_limited": ("run_query", "find_customer"),
         "uses_network": ("fetch_invoice",),
+        "reads_data": ("read_export",),
     }
 
 
@@ -49,6 +50,7 @@ def test_agent_fixture_is_one_part_with_all_its_reasons() -> None:
 
     assert (group.name, group.kind, group.tier) == ("agent.py", "agent", "high")
     assert reasons(group) == {
+        "loads_unsafely": ("restore_draft",),
         "no_permission_prompts": ("bypassPermissions",),
         "uses_network": ("post_message",),
         "reads_data": ("read_inbox", "lookup_customer"),
@@ -56,6 +58,7 @@ def test_agent_fixture_is_one_part_with_all_its_reasons() -> None:
             "mcp__support__read_inbox",
             "mcp__support__lookup_customer",
             "mcp__support__post_message",
+            "mcp__support__restore_draft",
         ),
         "runs_an_agent": (),
     }

@@ -9,6 +9,16 @@
 severity = "critical"
 fix_effort = "simple"
 kinds = ["plugin", "skill", "mcp_server", "agent"]
+# Headers of a remote MCP server whose value is a key or a token. A value
+# written there as plain text is a secret, whatever its shape. Lower case.
+secret_headers = [
+  "authorization",
+  "proxy-authorization",
+  "x-api-key",
+  "api-key",
+  "x-auth-token",
+  "x-access-token",
+]
 
 [perm-broad-bash]
 severity = "critical"
@@ -57,6 +67,16 @@ severity = "critical"
 fix_effort = "complex"
 kinds = ["mcp_server", "agent"]
 
+[inject-path]
+severity = "critical"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+
+[inject-deserialization]
+severity = "critical"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+
 [tool-free-form-sql]
 severity = "critical"
 fix_effort = "complex"
@@ -86,6 +106,20 @@ severity = "warning"
 fix_effort = "simple"
 kinds = ["plugin", "skill", "mcp_server", "agent"]
 # The commands that download a package and run it are in dependencies.toml.
+
+# A remote MCP server whose address starts with http:// and not https://.
+[mcp-plain-http]
+severity = "error"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+# Hosts on the same computer, where nothing travels over a network.
+local_hosts = ["localhost", "127.0.0.1", "::1"]
+
+# TLS verification switched off in Python code, anywhere in the project.
+[net-tls-off]
+severity = "error"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
 
 # A dependency, or an MCP server that is downloaded, in a version with a
 # published security problem. Found only when the audit runs with --lookup.

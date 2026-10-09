@@ -35,6 +35,7 @@ def test_mcp_server_fixture_lists_what_each_tool_touches() -> None:
         "fetch_invoice": (("network",), "free_form"),
         "add_note": (("database",), "parameterized"),
         "find_customer": (("database",), "free_form"),
+        "read_export": (("filesystem_read",), "parameterized"),
     }
 
 
@@ -45,16 +46,18 @@ def test_agent_fixture_lists_its_tools_and_its_settings() -> None:
         "read_inbox": (("filesystem_read",), "fixed"),
         "lookup_customer": (("filesystem_read",), "parameterized"),
         "post_message": (("network",), "parameterized"),
+        "restore_draft": ((), "parameterized"),
     }
     (agent,) = capabilities.agents
     assert agent.permission_mode == "bypassPermissions"
     assert agent.has_turn_limit is False
-    assert agent.declared_in.line == 49
+    assert agent.declared_in.line == 58
     allowed = [c.name for c in capabilities.capabilities if c.kind == "allowed_tool"]
     assert allowed == [
         "mcp__support__read_inbox",
         "mcp__support__lookup_customer",
         "mcp__support__post_message",
+        "mcp__support__restore_draft",
     ]
 
 
@@ -72,13 +75,15 @@ def test_skill_fixture_lists_the_tools_allowed_without_asking() -> None:
 def test_plugin_fixture_lists_its_mcp_server_and_its_hook() -> None:
     capabilities = map_of("plugin-team-helper")
 
-    server, docs = capabilities.mcp_servers
+    server, docs, metrics = capabilities.mcp_servers
     assert server.name == "issues"
     assert server.command == "npx -y @modelcontextprotocol/server-github"
     assert server.env == ("GITHUB_PERSONAL_ACCESS_TOKEN",)
     assert server.declared_in.line == 3
     assert (docs.name, docs.declared_in.line) == ("docs", 10)
     assert docs.command.startswith("npx -y mcp-remote@0.1.15")
+    assert (server.remote, docs.remote, metrics.remote) == (False, False, True)
+    assert metrics.command == "http://metrics.team-helper.example/mcp"
     (hook,) = capabilities.hooks
     assert hook.event == "SessionStart"
     assert hook.command.startswith("curl -fsSL")
@@ -99,9 +104,11 @@ def test_clean_fixture_has_restricted_tools_and_bounded_code() -> None:
     assert tools(capabilities) == {
         "add_note": (("database",), "parameterized"),
         "search_notes": (("database",), "parameterized"),
+        "read_template": (("filesystem_read",), "parameterized"),
     }
     assert [hook.event for hook in capabilities.hooks] == ["PreToolUse"]
-    assert [server.name for server in capabilities.mcp_servers] == ["notes"]
+    servers = [(server.name, server.remote) for server in capabilities.mcp_servers]
+    assert servers == [("notes", False), ("team-wiki", True)]
 
 
 def test_every_value_in_the_maps_comes_from_the_closed_lists() -> None:
@@ -150,6 +157,7 @@ def test_mcp_server_fixture_lists_the_data_each_tool_reaches() -> None:
             tables=(TableAccess("notes", "write", ("customer_id", "note")),),
         ),
         "find_customer": DataScope("any", database="customers.db"),
+        "read_export": DataScope("none"),
     }
 
 
@@ -162,6 +170,7 @@ def test_clean_fixture_lists_tables_and_columns_without_the_database() -> None:
         "search_notes": DataScope(
             "known", tables=(TableAccess("notes", "read", ("body", "id")),)
         ),
+        "read_template": DataScope("none"),
     }
 
 

@@ -4,11 +4,13 @@ import os
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 from mcp.server import MCPServer
 
 mcp = MCPServer("notes")
 DB_PATH = os.environ.get("NOTES_DB", "notes.db")
+TEMPLATES = Path(__file__).resolve().parent / "templates"
 MAX_NOTE_LENGTH = 2000
 MAX_RESULTS = 50
 
@@ -46,3 +48,12 @@ def search_notes(text: str, limit: int = 10) -> list[str]:
             (f"%{text}%", limit),
         ).fetchall()
     return [row[0] for row in rows]
+
+
+@mcp.tool()
+def read_template(name: str) -> str:
+    """Return a note template by its file name, for example meeting.md."""
+    path = (TEMPLATES / name).resolve()
+    if not path.is_relative_to(TEMPLATES):
+        raise ValueError("The template must be inside the templates folder.")
+    return path.read_text(encoding="utf-8")

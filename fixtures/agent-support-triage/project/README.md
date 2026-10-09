@@ -2,5 +2,6 @@
 
 An agent built with the Claude Agent SDK. It reads the emails in `inbox/`, looks up
 the customer who wrote each one, and posts a suggested answer to the support channel.
+A draft answer can be saved and restored later.
 
 Run it with `python agent.py`.

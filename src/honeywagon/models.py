@@ -101,14 +101,19 @@ class Capability:
     boundedness: str
     data_scope: DataScope
     requires_confirmation: bool | None
+    # A tool in code that rebuilds objects in a way that can run code.
+    unsafe_loading: bool = False
 
 
 @dataclass(frozen=True)
 class McpServerInfo:
+    """An MCP server of the project. For a remote one, `command` is its address."""
+
     name: str
     declared_in: Location
     command: str
     env: tuple[str, ...]
+    remote: bool = False
 
 
 @dataclass(frozen=True)

@@ -49,6 +49,14 @@
       "severity": "error",
       "layer": "model",
       "contains": "except Exception:"
+    },
+    {
+      "check_id": "inject-path",
+      "file": "server.py",
+      "line": 63,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "open(f\"exports/{filename}\")"
     }
   ]
 }

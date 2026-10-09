@@ -49,6 +49,22 @@
       "severity": "critical",
       "layer": "deterministic",
       "contains": "mcp-remote@"
+    },
+    {
+      "check_id": "mcp-plain-http",
+      "file": ".mcp.json",
+      "line": 16,
+      "severity": "error",
+      "layer": "deterministic",
+      "contains": "\"url\": \"http://metrics"
+    },
+    {
+      "check_id": "secret-in-file",
+      "file": ".mcp.json",
+      "line": 18,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "\"Authorization\": "
     }
   ]
 }

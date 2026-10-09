@@ -55,3 +55,10 @@ def find_customer(name: str) -> list[tuple]:
         return conn.execute(
             f"SELECT id, name, email FROM customers WHERE name LIKE '%{name}%'"
         ).fetchall()
+
+
+@mcp.tool()
+def read_export(filename: str) -> str:
+    """Return the contents of a file in the exports folder."""
+    with open(f"exports/{filename}") as handle:
+        return handle.read()

@@ -50,6 +50,48 @@ number_calls = ["int", "float"]
 read_methods = ["read_text", "read_bytes"]
 write_methods = ["write_text", "write_bytes"]
 
+# Calls that prove a path stays inside its folder, or cut it down to a file
+# name. A tool that makes one of them is not reported for a path built from
+# its input. The name is the last part of the call: path.is_relative_to(...).
+path_checks = ["is_relative_to", "commonpath", "basename", "secure_filename"]
+
+# Calls that rebuild objects from bytes or text and can run code while they do.
+# What is loaded is the first argument.
+unsafe_loads = [
+  "pickle.loads",
+  "pickle.load",
+  "marshal.loads",
+  "marshal.load",
+  "dill.loads",
+  "dill.load",
+  "jsonpickle.decode",
+  "yaml.load",
+  "yaml.unsafe_load",
+  "yaml.full_load",
+]
+# The call that is safe when it is given one of these loaders.
+yaml_load = "yaml.load"
+safe_yaml_loaders = ["SafeLoader", "CSafeLoader", "BaseLoader", "CBaseLoader"]
+
+# Functions and methods that make an HTTP request or build an HTTP client, on
+# any object. With verify=False they accept a server that proves nothing.
+http_calls = [
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "head",
+  "request",
+  "send",
+  "stream",
+  "Client",
+  "AsyncClient",
+  "Session",
+]
+# Calls that build a TLS context that checks nothing.
+unverified_contexts = ["ssl._create_unverified_context"]
+
 # Decorators that mark a function as a tool, and the call that configures an agent.
 sdk_tool_decorator = "claude_agent_sdk.tool"
 agent_options = "claude_agent_sdk.ClaudeAgentOptions"

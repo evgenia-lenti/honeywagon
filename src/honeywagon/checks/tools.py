@@ -7,6 +7,8 @@ from honeywagon.capability import Analysis
 from honeywagon.capability.python_code import INPUT_NONE, INPUT_WHOLE, PythonTool
 from honeywagon.checks.registry import Hit, register
 
+FILE_TOUCHES = ("filesystem_read", "filesystem_write")
+
 
 def _hit(analysis: Analysis, tool: PythonTool, line: int) -> Hit:
     file = analysis.project.file(tool.file)
@@ -21,6 +23,24 @@ def shell_injection(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[
             reaches_shell = effect.touch == "shell" and effect.through_shell
             if reaches_shell and effect.input != INPUT_NONE:
                 yield _hit(analysis, tool, effect.argument_line)
+
+
+@register("inject-path")
+def path_from_input(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[Hit]:
+    for tool in analysis.tools:
+        if tool.path_checked:
+            continue
+        for effect in tool.effects:
+            if effect.touch in FILE_TOUCHES and effect.input != INPUT_NONE:
+                yield _hit(analysis, tool, effect.argument_line)
+
+
+@register("inject-deserialization")
+def unsafe_load(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[Hit]:
+    for tool in analysis.tools:
+        for load in tool.unsafe_loads:
+            if load.input != INPUT_NONE:
+                yield _hit(analysis, tool, load.line)
 
 
 @register("inject-sql")

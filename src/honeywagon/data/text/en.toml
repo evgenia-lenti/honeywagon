@@ -29,6 +29,14 @@ consequence = "Whoever controls the input, including text that the model read so
 title = "Input of a tool is pasted into the text of a SQL statement"
 consequence = "Whoever controls the input, including text that the model read somewhere, can change what the statement does: read other rows and tables, or change and delete data."
 
+[checks.inject-path]
+title = "Input of a tool decides which file is opened"
+consequence = "Whoever controls the input, including text that the model read somewhere, can point the tool at any file the program can reach, for example with ../ in the name. That can show keys and private files, or overwrite files."
+
+[checks.inject-deserialization]
+title = "Input of a tool is loaded in a way that can run code"
+consequence = "Formats such as pickle can carry instructions that run while the data is loaded. Whoever controls the input can run their own commands on the computer where the tool runs."
+
 [checks.tool-free-form-sql]
 title = "A tool runs any SQL it is given"
 consequence = "The model can read, change or delete anything in the database, not only what this tool was meant for. A single misleading message is enough."
@@ -44,6 +52,14 @@ consequence = "The step that needs this file fails, or Claude makes something up
 [checks.test-real-database]
 title = "A test opens the real database"
 consequence = "Running the tests reads or changes real data, and the tests pass or fail depending on what the database holds that day."
+
+[checks.mcp-plain-http]
+title = "An MCP server is reached without encryption"
+consequence = "The address starts with http and not https, so everything sent to this server and everything it answers, including any key, can be read and changed by whoever sits on the network in between."
+
+[checks.net-tls-off]
+title = "The check of the server's identity is switched off"
+consequence = "The code accepts any server that answers, also a forged one. Whoever sits on the network in between can read and change what is sent, including keys."
 
 [checks.dep-security]
 title = "A dependency has a known security problem"
@@ -104,7 +120,7 @@ title = "What this project can do"
 nothing = "Nothing was recognised."
 allowed_tools = "Claude may use these without asking"
 tools = "Tools in the code"
-mcp_servers = "MCP servers it starts"
+mcp_servers = "MCP servers it starts or connects to"
 hooks = "Hooks that run by themselves"
 agents = "Agents"
 permission_modes = "Permission mode set in settings"
@@ -156,6 +172,7 @@ mcp_servers = "MCP servers"
 [risk_reasons]
 free_form_input = "takes free-form input"
 runs_commands = "runs commands"
+loads_unsafely = "loads data in a way that can run code"
 changes_data = "changes or deletes data"
 data_not_limited = "reaches data that the code does not limit"
 data_access_unknown = "uses a database in a way that could not be read"
@@ -165,6 +182,7 @@ runs_by_itself = "runs by itself"
 uses_network = "uses the network"
 reads_data = "reads data"
 starts_program = "starts a program"
+connects_to_remote_server = "connects to a remote server"
 allowed_without_asking = "lets Claude use tools without asking"
 sets_permission_mode = "sets the permission mode"
 runs_an_agent = "runs an agent"
@@ -189,6 +207,7 @@ unknown = "input not analysed"
 no_agentic_artifact = "No skill, plugin, MCP server or agent was found here, so nothing was checked."
 model_checkers = "Needs the checkers that use a model, which are not built yet."
 dynamic_tester = "Needs the dynamic tester, which is not built yet."
+remote_server_authentication = "Whether this server asks who is calling cannot be told from the configuration. A server that signs you in through the browser has no header here."
 dependency_lookup_off = "Not looked up. Run again with --lookup to ask the OSV database for known security problems. That sends these names and versions, and nothing else."
 dependency_lookup_failed = "The OSV database did not answer, so known security problems are unknown."
 dependency_not_pinned = "No exact version is named, so known security problems could not be looked up."

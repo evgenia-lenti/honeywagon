@@ -26,7 +26,7 @@ from honeywagon.datafiles import load_data
 from honeywagon.deps.manifests import Dependency, read_dependencies
 from honeywagon.deps.osv import Advisory, Lookup, Package, look_up_all
 from honeywagon.files import Project
-from honeywagon.guard.redact import safe_evidence
+from honeywagon.guard.redact import address, safe_evidence
 from honeywagon.models import (
     AgentInfo,
     Capability,
@@ -137,6 +137,7 @@ def _code_tool(tool: PythonTool) -> Capability:
         boundedness=tool.boundedness,
         data_scope=data_scope(tool),
         requires_confirmation=None,
+        unsafe_loading=bool(tool.unsafe_loads),
     )
 
 
@@ -169,9 +170,12 @@ def capability_map(analysis: Analysis) -> CapabilityMap:
                 name=server.name,
                 declared_in=Location(server.file, server.line),
                 command=safe_evidence(
-                    " ".join([server.command or server.url or "", *server.args])
+                    " ".join(
+                        [server.command or address(server.url or ""), *server.args]
+                    )
                 ),
                 env=server.env,
+                remote=server.is_remote,
             )
             for server in analysis.mcp_servers
         ),

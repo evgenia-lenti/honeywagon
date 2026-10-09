@@ -41,6 +41,8 @@ def _tool_reasons(tool: Capability) -> list[str]:
         reasons.append("free_form_input")
     if "shell" in tool.touches:
         reasons.append("runs_commands")
+    if tool.unsafe_loading:
+        reasons.append("loads_unsafely")
     changes_data = "filesystem_write" in tool.touches or any(
         access.action in CHANGING_ACTIONS for access in scope.tables
     )
@@ -89,7 +91,8 @@ def risk_map(capabilities: CapabilityMap) -> RiskMap:
     for hook in capabilities.hooks:
         parts.add(hook.declared_in.file, "hooks", "runs_by_itself", hook.event)
     for server in capabilities.mcp_servers:
-        parts.add(server.declared_in.file, "mcp_servers", "starts_program", server.name)
+        reason = "connects_to_remote_server" if server.remote else "starts_program"
+        parts.add(server.declared_in.file, "mcp_servers", reason, server.name)
 
     order = sorted(tiers, key=lambda key: RISK_TIERS.index(tiers[key]))
     groups = []

@@ -2,6 +2,7 @@
 
 import re
 from functools import cache
+from urllib.parse import urlsplit
 
 from honeywagon.datafiles import load_data
 
@@ -26,6 +27,25 @@ def redact(text: str) -> str:
     return _secret_pattern().sub(
         lambda match: match.group()[:VISIBLE_CHARACTERS] + REDACTED, text
     )
+
+
+def mask(text: str, secret: str) -> str:
+    """Hide one known secret in a text, for a secret that has no known shape.
+
+    A short secret shows fewer characters, so that most of it stays hidden.
+    """
+    visible = min(VISIBLE_CHARACTERS, len(secret) // 3)
+    return text.replace(secret, secret[:visible] + REDACTED)
+
+
+def address(url: str) -> str:
+    """Return an address without the parts that can hold a secret: the user
+    name and password in front of the host, and whatever follows a question mark."""
+    parts = urlsplit(url)
+    if not parts.scheme or not parts.netloc:
+        return url
+    host = parts.netloc.rpartition("@")[2]
+    return f"{parts.scheme}://{host}{parts.path}"
 
 
 def safe_evidence(text: str) -> str:

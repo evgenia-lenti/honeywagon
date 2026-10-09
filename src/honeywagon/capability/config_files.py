@@ -46,6 +46,13 @@ class McpServer:
     args: tuple[str, ...]
     env: tuple[str, ...]
     url: str | None
+    # The headers sent to a remote server, as (name, value). The values are raw
+    # text from the project: they never go into an output as they are.
+    headers: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def is_remote(self) -> bool:
+        return self.url is not None
 
 
 @dataclass(frozen=True)
@@ -103,6 +110,7 @@ def read_mcp_servers(project: Project) -> Iterator[McpServer | NotChecked]:
             args = server.get("args")
             env = server.get("env")
             url = server.get("url")
+            headers = server.get("headers")
             yield McpServer(
                 name=name,
                 file=file.path,
@@ -111,6 +119,13 @@ def read_mcp_servers(project: Project) -> Iterator[McpServer | NotChecked]:
                 args=tuple(str(a) for a in args) if isinstance(args, list) else (),
                 env=tuple(env) if isinstance(env, dict) else (),
                 url=url if isinstance(url, str) else None,
+                headers=tuple(
+                    (str(key), value)
+                    for key, value in (
+                        headers if isinstance(headers, dict) else {}
+                    ).items()
+                    if isinstance(value, str)
+                ),
             )
 
 

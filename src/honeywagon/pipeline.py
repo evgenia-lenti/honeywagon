@@ -142,6 +142,10 @@ def run_audit(root: Path, lookup: Lookup | None = None) -> RunResult:
         if sql_not_read:
             not_checked.append(NotChecked(", ".join(sql_not_read), "sql_not_read"))
         not_checked.extend(_dependencies_not_checked(analysis))
+        remote = [server.name for server in capabilities.mcp_servers if server.remote]
+        if remote:
+            what = safe_evidence(", ".join(remote))
+            not_checked.append(NotChecked(what, "remote_server_authentication"))
         not_checked.extend(_not_covered(key) for key in NOT_COVERED)
 
     return RunResult(

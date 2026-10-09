@@ -53,6 +53,15 @@ class DatabaseTarget:
 
 
 @dataclass(frozen=True)
+class UnsafeLoad:
+    """One call inside a tool that rebuilds objects from bytes or text, and how
+    much of what it loads comes from the tool's input."""
+
+    line: int
+    input: str
+
+
+@dataclass(frozen=True)
 class PythonTool:
     name: str
     file: str
@@ -60,6 +69,9 @@ class PythonTool:
     has_inputs: bool
     effects: tuple[Effect, ...]
     databases: tuple[DatabaseTarget, ...] = ()
+    unsafe_loads: tuple[UnsafeLoad, ...] = ()
+    # The tool makes a call that keeps a path inside its folder.
+    path_checked: bool = False
 
     @property
     def touches(self) -> tuple[str, ...]:
@@ -102,6 +114,13 @@ def _dotted(node: ast.expr) -> str | None:
         base = _dotted(node.value)
         return f"{base}.{node.attr}" if base else None
     return None
+
+
+def _last_name(node: ast.expr) -> str | None:
+    """Return the last part of a name: is_relative_to for path.is_relative_to."""
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return node.id if isinstance(node, ast.Name) else None
 
 
 def _text_of(node: ast.expr | None) -> str | None:
@@ -340,8 +359,37 @@ class PythonModule:
                 has_inputs=has_inputs,
                 effects=tuple(self._effects(function, inputs, scope)),
                 databases=tuple(self._databases(function, scope)),
+                unsafe_loads=tuple(self._unsafe_loads(function, inputs)),
+                path_checked=self._has_path_check(function),
             )
         return None
+
+    def _has_path_check(self, function: FunctionNode) -> bool:
+        checks = self._calls["path_checks"]
+        return any(
+            isinstance(node, ast.Call) and _last_name(node.func) in checks
+            for node in ast.walk(function)
+        )
+
+    def _unsafe_loads(
+        self, function: FunctionNode, inputs: _Inputs
+    ) -> list[UnsafeLoad]:
+        calls = self._calls
+        loads = []
+        for node in ast.walk(function):
+            if not isinstance(node, ast.Call):
+                continue
+            name = self.resolve(node.func)
+            if name not in calls["unsafe_loads"]:
+                continue
+            if name == calls["yaml_load"]:
+                keywords = {k.arg: k.value for k in node.keywords if k.arg}
+                loader = node.args[1] if len(node.args) > 1 else keywords.get("Loader")
+                if loader and _last_name(loader) in calls["safe_yaml_loaders"]:
+                    continue
+            loaded = node.args[0] if node.args else None
+            loads.append(UnsafeLoad(node.lineno, inputs.classify(loaded)))
+        return sorted(loads, key=lambda load: load.line)
 
     def _databases(self, function: FunctionNode, scope: _Scope) -> list[DatabaseTarget]:
         """List the databases that the tool opens itself, each one once."""
@@ -426,6 +474,25 @@ class PythonModule:
                 touch = "filesystem_read" if reads else "filesystem_write"
                 effects.append(effect(touch, node.func.value))
         return sorted(effects, key=lambda effect: (effect.line, effect.touch))
+
+    @cached_property
+    def tls_off(self) -> tuple[int, ...]:
+        """The lines, anywhere in the file, where TLS verification is switched off."""
+        calls = self._calls
+        lines = set()
+        for node in ast.walk(self.tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if self.resolve(node.func) in calls["unverified_contexts"]:
+                lines.add(node.lineno)
+            if _last_name(node.func) not in calls["http_calls"]:
+                continue
+            for keyword in node.keywords:
+                value = keyword.value
+                if keyword.arg == "verify" and isinstance(value, ast.Constant):
+                    if value.value is False:
+                        lines.add(value.lineno)
+        return tuple(sorted(lines))
 
     @cached_property
     def agent_options(self) -> tuple[AgentOptions, ...]:

@@ -5,7 +5,7 @@
     {
       "check_id": "perm-bypass-permissions",
       "file": "agent.py",
-      "line": 57,
+      "line": 67,
       "severity": "critical",
       "layer": "deterministic",
       "contains": "permission_mode=\"bypassPermissions\""
@@ -13,7 +13,7 @@
     {
       "check_id": "secret-in-file",
       "file": "agent.py",
-      "line": 11,
+      "line": 13,
       "severity": "critical",
       "layer": "deterministic",
       "contains": "SLACK_BOT_TOKEN = "
@@ -21,7 +21,7 @@
     {
       "check_id": "risk-dangerous-combination",
       "file": "agent.py",
-      "line": 49,
+      "line": 58,
       "severity": "critical",
       "layer": "model",
       "contains": "options = ClaudeAgentOptions("
@@ -29,7 +29,7 @@
     {
       "check_id": "agent-no-turn-limit",
       "file": "agent.py",
-      "line": 49,
+      "line": 58,
       "severity": "warning",
       "layer": "deterministic",
       "contains": "options = ClaudeAgentOptions("
@@ -37,7 +37,7 @@
     {
       "check_id": "reliability-no-failure-handling",
       "file": "agent.py",
-      "line": 29,
+      "line": 31,
       "severity": "error",
       "layer": "model",
       "contains": "customers[args[\"email\"]]"
@@ -49,6 +49,22 @@
       "severity": "error",
       "layer": "deterministic",
       "contains": "requests=="
+    },
+    {
+      "check_id": "inject-deserialization",
+      "file": "agent.py",
+      "line": 48,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "pickle.loads("
+    },
+    {
+      "check_id": "net-tls-off",
+      "file": "agent.py",
+      "line": 41,
+      "severity": "error",
+      "layer": "deterministic",
+      "contains": "verify=False"
     }
   ]
 }

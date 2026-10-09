@@ -6,6 +6,13 @@
       "env": {
         "NOTES_DB": "${CLAUDE_PLUGIN_DATA}/notes.db"
       }
+    },
+    "team-wiki": {
+      "type": "http",
+      "url": "https://wiki.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${TEAM_WIKI_TOKEN}"
+      }
     }
   }
 }

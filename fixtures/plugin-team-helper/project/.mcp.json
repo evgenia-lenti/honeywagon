@@ -10,6 +10,13 @@
     "docs": {
       "command": "npx",
       "args": ["-y", "mcp-remote@0.1.15", "https://docs.team-helper.example/mcp"]
+    },
+    "metrics": {
+      "type": "http",
+      "url": "http://metrics.team-helper.example/mcp",
+      "headers": {
+        "Authorization": "Bearer mtk_FAKE-FIXTURE-NOT-A-REAL-TOKEN"
+      }
     }
   }
 }
