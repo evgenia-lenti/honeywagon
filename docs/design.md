@@ -33,13 +33,15 @@ mcpscan-cli is the basis for the first layer, for four reasons:
 - **It is deterministic and outputs JSON and SARIF,** so it fits the finding model and GitHub CI.
 - **The MIT licence** allows integration in the public portfolio repo as well.
 
-mcpscan-cli is the only dependency. The other tools in the table are not integrated:
+mcpscan-cli is the only scanner considered for integration. The other tools in the table are not integrated:
 
 - **SkillScan:** study material for the dynamic check with decoys, when phase 7 arrives. Its code is read, it does not become a dependency.
 - **Snyk agent-scan:** an optional comparison, once, on the synthetic fixtures, to show what it finds and what ours finds. Never on company projects without approval, and never inside the tool.
 - **mcp-audit:** not needed. The dangerous combinations across servers are computed by our own capability map.
 
 Two reservations about mcpscan-cli: it has a single maintainer and is at beta stage, and as a static check with heuristic rules it does not see prompt injection through content. For this reason the version is pinned and the scanner goes behind an adapter, so that it can be replaced without changes to the rest of the tool.
+
+Because of these reservations, the integration is decided on measurements and not in advance. mcpscan-cli is first run on the fixtures, to see which planted mistakes it finds and how many false findings it produces on the clean fixture. Whether it becomes a pinned dependency, an optional one, or is left out is decided on those numbers.
 
 For general vibe coded code there are also [hallucinot](https://github.com/jayj221/hallucinot) (deleted tests and assertions per commit) and [vibescore](https://socket.dev/npm/package/@marco-trotta1/vibescore) (stubs and placeholders by keyword).
 
@@ -295,6 +297,7 @@ The proposal is to start from the deterministic layer, because it gives the capa
 | Where they build them | Wherever they build them, everything goes into a repo: plugin, standalone skill or code. Every project has its own repo | One input, the repo, and one report per repo. The tool first recognises what it contains (plugin, skill, code) and chooses checks. It runs on demand inside Claude Code |
 | Who gives the verdict | The creator, who is also responsible for whatever they put into production. The developer reads the report and warns them | The tool proposes a verdict with reasoning, it does not block on its own |
 | Which mistakes appear in practice | It will show in the trials, the catalogue is enriched along the way | The checks are defined as data with their own ID, so that they can be added without a code change |
+| In which language the report is written | English for now. Every text that the creator reads is in one file per language, outside the code | A second language is a second file with the same keys, with no code change |
 | Who fixes | The creator. The simple ones on their own with the ready-made changes, and they rerun the audit. For the complex ones they ask a developer for help | The tool automatically classifies every finding (severity, confidence, simple or complex). The developer corrects the classification where they disagree and points out the serious ones to the creator. The simple ones have instructions in plain language |
 
 **Scope:** MCP servers, scripts around skills, tools and whatever concerns agentic AI, together with Python code that implements agents. The boundary is defined by what the code does and not by the language: the audit of general code is out of scope and no extension in that direction is planned.
@@ -303,7 +306,8 @@ For the Python code of the agents the tool needs:
 
 - **Reading the code with AST** for the capability map: which tools are defined and what each one touches (files, network, shell, database).
 - **Agent-specific checks:** model output that passes into `eval`, shell or SQL, tool arguments without checking, a loop without a limit on steps or cost, calls without a timeout, keys inside the code or the prompts.
-- **Ready-made Python scanners as an auxiliary layer,** only on the agent's files: Bandit for dangerous calls, pip-audit for vulnerable dependencies.
+- **Ready-made Python scanners as an auxiliary layer,** only on the agent's files: Bandit for dangerous calls.
+- **Known vulnerabilities of dependencies** from the OSV database, with a lookup that sends only the package name and version. This replaced the earlier idea of pip-audit, which is one more dependency and downloads packages to resolve indirect dependencies.
 
 **Frameworks (to be confirmed):** Claude Agent SDK, LangGraph and Google ADK. Each framework declares the agent's tools and limits in a different way, so recognition is done with one adapter per framework. All the adapters produce the same capability map, so that the checks from there on are shared.
 

@@ -12,9 +12,10 @@ it audits. The creator of a project decides what goes to production.
 
 ## Status
 
-Under construction: step 2 of 6 is done. The repository has the design documents, the
-fixtures with planted mistakes and the script that measures the tool against them.
-There is nothing to run against a project yet.
+Under construction: step 3 of 6, the deterministic core. The `audit` command runs and
+gives a report with a proposed verdict, but it has only three checks so far: keys
+written in files, a skill that allows any shell command, and a hook that downloads a
+script and runs it. Everything else is listed in the report as "not checked".
 
 ## Requirements
 
@@ -49,6 +50,16 @@ Windows (PowerShell):
 
 On macOS and Linux, use `.venv/bin/python` in place of `.venv\Scripts\python`.
 
+## Running an audit
+
+```powershell
+.venv\Scripts\audit <folder>
+.venv\Scripts\audit <folder> --format json
+```
+
+The command only reads the folder. It exits with `1` when it finds a critical
+problem, as a signal for scripts. It does not block anything.
+
 ## Fixtures and evaluation
 
 [fixtures/](fixtures/) holds small fake projects with planted mistakes, and one
@@ -58,12 +69,19 @@ without any. The code there is wrong on purpose and every key in it is fake.
 per kind of project:
 
 ```powershell
-.venv\Scripts\python evaluate.py
+.venv\Scripts\python evaluate.py --layer deterministic
 ```
 
-The tool has no checks yet, so every planted mistake is reported as missed.
+Today it finds 5 of the 15 planted mistakes that code can find, with no false
+finding.
 
-## Design
+## Documentation
+
+What works today:
+
+- [user-guide.md](docs/user-guide.md): how to run an audit and read the report
+- [developer-guide.md](docs/developer-guide.md): how the code is organised and how to
+  add a check
 
 The design lives in [docs/](docs/):
 

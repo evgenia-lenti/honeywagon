@@ -18,13 +18,20 @@ Read these before making design decisions.
 - `docs/prd.md`: requirements and first-version scope (section "Versions").
 - `docs/design.md`: background, catalogue of common mistakes, decisions.
 
+Two more documents describe only what is built today:
+
+- `docs/user-guide.md`: for creators, and for the developers who advise them. How
+  to run an audit and how to read the report.
+- `docs/developer-guide.md`: for whoever works on the code. How the code is
+  organised and how to add a check.
+
 The documents describe the full design. The first version implements part of it.
 If the documents and this file disagree, this file wins for scope and current
 step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 3 of 6: deterministic core.**
+**Step 3 of 6: deterministic core, part 3b of three.**
 
 Update this line when a step is finished and reviewed.
 
@@ -41,6 +48,15 @@ Update this line when a step is finished and reviewed.
 6. Dynamic tester for MCP servers and scripts, in Docker, without a model.
 
 The tool is already useful after step 4. Steps 5 and 6 make it deeper.
+
+Step 3 is built in three parts, each with its own plan, branch and review:
+
+- 3a: the `audit` command, project detection, the finding model, three checks,
+  classification, proposed verdict, report.
+- 3b: capability map and the other code-based checks, until every planted
+  deterministic mistake in `fixtures/` is found.
+- 3c: mcpscan-cli is first measured on the fixtures and then decided on. Known
+  vulnerabilities of dependencies come from the OSV database. Simple risk map.
 
 ### The six checkers (step 5), in the order they are added
 
@@ -122,7 +138,8 @@ Fields: `id`, `check_id`, `title`, `file`, `line`, `evidence`, `consequence`,
 Proposed verdict, from fixed rules: a `critical` with `high` or `medium`
 confidence gives "not recommended for use"; an `error` without a `critical` gives
 "fix before use"; otherwise "no reason found not to use". `low` findings do not
-count. Full definitions are in `docs/tdd.md`.
+count. A folder with no skill, plugin, MCP server or agent in it gets "nothing to
+audit", because nothing was checked. Full definitions are in `docs/tdd.md`.
 
 ## How we work
 
@@ -131,6 +148,9 @@ count. Full definitions are in `docs/tdd.md`.
 - Keep changes small enough to review in one sitting. One step per branch.
 - Write tests with the code. A check is not done until a fixture exercises it and
   the clean fixture stays clean.
+- Update the documentation with the code, before the review. `docs/user-guide.md`
+  and `docs/developer-guide.md` describe what works today. The four design documents
+  change when a decision changes.
 - If something in the design looks wrong or unclear while implementing, stop and
   say so. Do not silently work around it.
 - Before relying on a Claude Code detail (file names, frontmatter fields, hook
@@ -163,22 +183,30 @@ Lint, format check and type check:
 .venv\Scripts\python -m mypy
 ```
 
+Audit a project folder with the deterministic layer:
+
+```powershell
+.venv\Scripts\audit <folder>
+.venv\Scripts\audit <folder> --format json
+```
+
 Compare the tool's findings with the planted mistakes in `fixtures/`:
 
 ```powershell
-.venv\Scripts\python evaluate.py
-.venv\Scripts\python evaluate.py --results <folder> --layer deterministic
+.venv\Scripts\python evaluate.py --layer deterministic
+.venv\Scripts\python evaluate.py --results <folder>
 ```
 
-Without `--results` every planted mistake counts as missed. `<folder>` holds one
-`<fixture>.json` of findings per fixture. `fixtures/README.md` describes the fixtures
+Without `--results` it runs the deterministic core on every fixture. `<folder>` holds
+one `<fixture>.json` of findings per fixture. `fixtures/README.md` describes the fixtures
 and the format of `expected.json`.
 
 ## Conventions
 
 - Python, with type hints.
 - Code, comments, identifiers and commit messages in English.
-- User-facing report text: language still to be decided. Keep all such text in
-  data files, not in code, so it can be translated.
-- Checks are defined as data (id, title, default severity, consequence text) plus a
-  small function, so they can be tuned without code changes.
+- User-facing report text is in English, in `src/honeywagon/data/text/en.toml`. A
+  second language is a second file with the same keys. No such text in code.
+- Checks are defined as data plus a small function, so they can be tuned without
+  code changes: id, default severity and options in `src/honeywagon/data/checks.toml`,
+  title and consequence text in the text file.

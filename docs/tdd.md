@@ -88,8 +88,10 @@ src/honeywagon/
   pipeline.py         the chain of steps
   models.py           Finding, CapabilityMap, RunResult
   detect.py           project kind detection
+  files.py            reads the project's text files, and lists what it did not read
   capability/         parsers per file kind, one adapter per framework
   checks/             deterministic checks and their registry
+  data/               check definitions, secret patterns, and the texts per language
   scanners/           adapters for off-the-shelf scanners
   deps/               dependency check (WARM), registry lookups
   triage.py           risk map per feature
@@ -136,7 +138,7 @@ Three structures pass through the whole chain. They are defined once in `models.
 
 | Field | Note |
 | --- | --- |
-| `id` | `check_id` plus a short hash of the file path and the normalised evidence text. It does not contain the line number, so that it stays the same when lines move |
+| `id` | `check_id` plus a short hash of the file path and the normalised evidence text. It does not contain the line number, so that it stays the same when lines move. The hash is the first six hex digits of the SHA-256 of the path and the evidence, with runs of whitespace in the evidence collapsed to one space. For a secret the redacted evidence is hashed, never the secret. A second finding with the same id in one run gets a numbered suffix |
 | `evidence` | The exact excerpt from the file. If it is a secret, it is stored redacted |
 | `consequence` | Plain language. In the deterministic layer it comes from the check's definition, in the full run the writer writes it |
 | `severity` | `critical`, `error`, `warning`, `suggestion`, `nitpick` |
@@ -239,7 +241,7 @@ A dependency here is not only a package. It is anything from a third party that 
 | **W** Worth it? | Would a few lines of our own code replace it? | Is it already covered by a built-in tool? | Model, from the points of use |
 | **A** Alive? | Date of the latest release, whether the repo is archived | The same | Code, from the package registry |
 | **R** Right size? | How many sub-dependencies it brings for what we use | How many tools the server exposes and how many are used | Code for the sizes, model for the judgment |
-| **M** Safe? | Known vulnerabilities in the version being installed | Known vulnerabilities, pinned version, permissions it asks for | Code, with `pip-audit` and `npm audit` |
+| **M** Safe? | Known vulnerabilities in the version being installed | Known vulnerabilities, pinned version, permissions it asks for | Code, with a lookup in the OSV database (api.osv.dev) that sends only the package name and version. A dependency without an exact version is reported as "not checked" |
 
 The reverse question is checked too: our own code for something that a ready-made, maintained tool already covers. The rule that reconciles the two: whatever is small and simple is written by us, whatever is a substantial integration with a known service is taken ready-made, provided it passes A and M.
 
@@ -275,7 +277,7 @@ Automatically generated files (lockfiles, compiled files) go into a separate gro
 `classify.py` runs last, over all findings regardless of origin:
 
 - **Confidence:** `high` for a deterministic finding or a confirmation in the sandbox, `medium` for an agent finding with `verification: confirmed`, `low` for `uncertain`. The `rejected` ones are removed.
-- **Verdict:** fixed rules in order. A `critical` with `high` or `medium` confidence gives "not recommended for use". An `error` without a `critical` gives "fix before use". Otherwise "no reason found not to use". `low` findings do not count.
+- **Verdict:** fixed rules in order. A `critical` with `high` or `medium` confidence gives "not recommended for use". An `error` without a `critical` gives "fix before use". Otherwise "no reason found not to use". `low` findings do not count. When detection finds no skill, plugin, MCP server or agent, no check runs and the verdict is "nothing to audit", so that an unchecked folder is never reported as fine.
 - **Justification:** the verdict is accompanied by the IDs of the findings that triggered it.
 
 If only the deterministic layer ran, the verdict is marked as partial.
@@ -554,7 +556,7 @@ Alongside the synthetic ones, real skills are also used as fixtures, with their 
 
 ### `evaluate.py`
 
-It reads the tool's findings from a folder with one `<fixture>.json` per fixture. Without that folder no fixture has findings, so every planted mistake counts as missed. With `--layer` it counts only the planted mistakes of one layer.
+It reads the tool's findings from a folder with one `<fixture>.json` per fixture. Without that folder it runs the deterministic core on every fixture. With `--layer` it counts only the planted mistakes of one layer.
 
 It matches findings to expected ones based on the `check_id` and the file, with a tolerance of three lines. Each finding matches at most one planted mistake. It produces, per `check_id`, per kind of project and per fixture:
 
@@ -629,13 +631,13 @@ Decisions about how the tool is used:
 
 ## Open technical questions
 
-- [ ] **Normalisation of the evidence for the ID.** How much text goes into the hash, so that a small change in the line does not produce a new finding but two different problems in the same file are not merged?
+- [x] **Normalisation of the evidence for the ID.** How much text goes into the hash, so that a small change in the line does not produce a new finding but two different problems in the same file are not merged? Decided: the whole evidence line with whitespace collapsed, as described in the Finding table. To be revisited if the measurements show ids that change too easily.
 - [ ] **`check_id` list for the agents.** A closed list makes measurement easy but prevents findings we did not foresee. Is an "other" category with a mandatory description needed?
 - [ ] **From the definitions to the plugin's files.** Are the subagent files generated automatically from `definitions/` with a build step, or are they maintained by hand?
 - [ ] **Hooks and the user's settings.** The documentation confirms that a hook can always deny a tool, even when the user has bypassed the permissions. It remains to be checked with a test that the plugin's hooks also apply to the calls made by the subagents.
 - [ ] **Difference between the two runners.** The measurements are made with the Agent SDK, the use is inside Claude Code. How much do the results differ, and how do we check it?
 - [ ] **Limits of the dynamic tester.** It will start project code. With what restrictions?
-- [ ] **Language of the texts for the creator.** If it is Greek, the check definitions need two languages.
+- [x] **Language of the texts for the creator.** If it is Greek, the check definitions need two languages. Decided: English for now. Every such text is in one file per language (`data/text/en.toml`), so a second language is a second file with the same keys.
 - [ ] **Intent from existing documents.** How are the workshop notes located inside a repo, and what happens when they do not exist or are older than the code?
 - [ ] **Limits of the dependency check.** After how long without a release is a dependency considered abandoned, and which registries go into the closed list?
 - [ ] **Data scope from dynamic SQL.** When the query is composed in the code, how far can the parser determine tables and columns before writing `unknown`?

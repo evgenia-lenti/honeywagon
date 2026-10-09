@@ -226,7 +226,7 @@ The first version must be simple and be finished quickly. Whatever is left out i
 
 | Part | What it contains |
 | --- | --- |
-| Core in Python | Project type detection, capability map, code-based checks, mcpscan-cli, known vulnerabilities of dependencies, simple risk map, classification and proposed verdict |
+| Core in Python | Project type detection, capability map, code-based checks, mcpscan-cli if its measurements on the fixtures justify it, known vulnerabilities of dependencies, simple risk map, classification and proposed verdict |
 | Plugin for Claude Code | `/audit` for a quick check and `/audit full` for a full one, with the report in the conversation |
 | Six checkers as subagents | Access, data flow, intent versus implementation, reliability with suggestions for tests (ZOMBIES), practices, performance and scaling |
 | Verifier | Independent subagent per finding |
