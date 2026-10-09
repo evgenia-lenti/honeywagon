@@ -1,0 +1,46 @@
+# The Python calls that the code reader recognises inside a tool.
+
+# Calls that run a command. The command is the first argument.
+shell = [
+  "subprocess.run",
+  "subprocess.call",
+  "subprocess.check_call",
+  "subprocess.check_output",
+  "subprocess.Popen",
+  "os.system",
+  "os.popen",
+]
+# Calls that always pass the command to a shell, with or without shell=True.
+always_shell = ["os.system", "os.popen"]
+
+# Calls that reach the network. The address is the first argument.
+network = [
+  "urllib.request.urlopen",
+  "urllib.request.Request",
+  "requests.get",
+  "requests.post",
+  "requests.put",
+  "requests.patch",
+  "requests.delete",
+  "requests.head",
+  "httpx.get",
+  "httpx.post",
+  "httpx.put",
+  "httpx.patch",
+  "httpx.delete",
+  "httpx.head",
+]
+
+# Methods that run SQL, on any object. The statement is the first argument.
+database_methods = ["execute", "executemany", "executescript"]
+
+# Methods that read or write a file, on any object.
+read_methods = ["read_text", "read_bytes"]
+write_methods = ["write_text", "write_bytes"]
+
+# Decorators that mark a function as a tool, and the call that configures an agent.
+sdk_tool_decorator = "claude_agent_sdk.tool"
+agent_options = "claude_agent_sdk.ClaudeAgentOptions"
+
+# Arguments of an MCP tool function that are not input from the model.
+ignored_parameters = ["self", "cls", "ctx", "context"]

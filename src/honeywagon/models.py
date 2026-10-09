@@ -10,6 +10,16 @@ SEVERITIES = ("critical", "error", "warning", "suggestion", "nitpick")
 CONFIDENCES = ("high", "medium", "low")
 FIX_EFFORTS = ("simple", "complex")
 PROJECT_KINDS = ("plugin", "skill", "mcp_server", "agent")
+TOUCHES = (
+    "filesystem_read",
+    "filesystem_write",
+    "shell",
+    "network",
+    "database",
+    "secrets",
+    "external_content",
+)
+BOUNDEDNESS = ("fixed", "parameterized", "free_form", "unknown")
 
 
 @dataclass(frozen=True)
@@ -44,6 +54,67 @@ class NotChecked:
 
 
 @dataclass(frozen=True)
+class Location:
+    file: str
+    line: int
+
+
+@dataclass(frozen=True)
+class Capability:
+    """One thing Claude may use: a tool allowed without asking, or a tool in code."""
+
+    name: str
+    kind: str
+    declared_in: Location
+    scope: str
+    touches: tuple[str, ...]
+    boundedness: str
+    data_scope: str
+    requires_confirmation: bool | None
+
+
+@dataclass(frozen=True)
+class McpServerInfo:
+    name: str
+    declared_in: Location
+    command: str
+    env: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class HookInfo:
+    event: str
+    command: str
+    declared_in: Location
+
+
+@dataclass(frozen=True)
+class AgentInfo:
+    declared_in: Location
+    permission_mode: str | None
+    has_turn_limit: bool | None
+
+
+@dataclass(frozen=True)
+class PermissionModeInfo:
+    """The permission mode that a settings file makes sessions start in."""
+
+    declared_in: Location
+    mode: str
+
+
+@dataclass(frozen=True)
+class CapabilityMap:
+    """What the project can do. It lists facts and judges nothing."""
+
+    capabilities: tuple[Capability, ...] = ()
+    mcp_servers: tuple[McpServerInfo, ...] = ()
+    hooks: tuple[HookInfo, ...] = ()
+    agents: tuple[AgentInfo, ...] = ()
+    permission_modes: tuple[PermissionModeInfo, ...] = ()
+
+
+@dataclass(frozen=True)
 class Verdict:
     key: str
     text: str
@@ -58,6 +129,7 @@ class RunResult:
     project_kinds: tuple[str, ...]
     layers_ran: tuple[str, ...]
     checks_ran: tuple[str, ...]
+    capability_map: CapabilityMap
     findings: tuple[Finding, ...]
     verdict: Verdict
     not_checked: tuple[NotChecked, ...]

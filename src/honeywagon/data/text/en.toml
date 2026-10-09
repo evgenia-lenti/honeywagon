@@ -13,6 +13,46 @@ consequence = "Whoever uses the skill lets Claude run any command on their compu
 title = "A hook downloads a script and runs it"
 consequence = "The hook runs by itself, with no question asked. Whoever controls that address can run any command on the computer of everyone who uses this project."
 
+[checks.perm-bypass-permissions]
+title = "The agent never asks before it acts"
+consequence = "The agent runs every tool it has, including the ones that change or delete things, without a person approving anything."
+
+[checks.perm-bypass-in-settings]
+title = "A settings file asks for no permission prompts"
+consequence = "Claude Code 2.1.257 and newer ignore this setting inside a project, so there it does nothing. Older versions obey it and run every tool without asking. Either way the project should not ask for it."
+
+[checks.inject-shell]
+title = "Input of a tool goes into a shell command"
+consequence = "Whoever controls the input, including text that the model read somewhere, can add their own commands and run them on the computer where the tool runs."
+
+[checks.tool-free-form-sql]
+title = "A tool runs any SQL it is given"
+consequence = "The model can read, change or delete anything in the database, not only what this tool was meant for. A single misleading message is enough."
+
+[checks.mcp-fetch-any-url]
+title = "A tool calls any address it is given"
+consequence = "The tool can be pointed at internal systems that are not meant to be reached from outside, and what it gets back is passed to the model."
+
+[checks.ref-missing-file]
+title = "The skill points to a file that does not exist"
+consequence = "The step that needs this file fails, or Claude makes something up to replace it."
+
+[checks.test-real-database]
+title = "A test opens the real database"
+consequence = "Running the tests reads or changes real data, and the tests pass or fail depending on what the database holds that day."
+
+[checks.mcp-unpinned-server]
+title = "An MCP server is downloaded without a fixed version"
+consequence = "Each start may run a different version. If a new version is broken or malicious, it runs on your computer with no warning."
+
+[checks.port-absolute-path]
+title = "A path points into one person's home folder"
+consequence = "This works only on that person's computer. For everyone else the step fails."
+
+[checks.agent-no-turn-limit]
+title = "The agent has no limit on how many turns it runs"
+consequence = "If the agent gets stuck in a loop, it keeps running and keeps costing money until someone stops it."
+
 [verdict]
 not_recommended = "Not recommended for use"
 fix_before_use = "Fix before use"
@@ -45,9 +85,44 @@ findings = "Findings"
 no_findings = "No findings."
 confidence = "confidence"
 fix = "fix"
+suggested_change = "Suggested change"
 not_checked = "Not checked"
 more_files = "and {count} more"
 none = "none"
+
+[capabilities]
+title = "What this project can do"
+nothing = "Nothing was recognised."
+allowed_tools = "Claude may use these without asking"
+tools = "Tools in the code"
+mcp_servers = "MCP servers it starts"
+hooks = "Hooks that run by themselves"
+agents = "Agents"
+permission_modes = "Permission mode set in settings"
+restricted = "restricted"
+any_use = "any use"
+touches_nothing = "nothing outside the program"
+permission_mode = "permission mode"
+not_set = "not set"
+turn_limit = "turn limit"
+yes = "yes"
+no = "no"
+unknown = "unknown"
+
+[touches]
+filesystem_read = "reads files"
+filesystem_write = "writes files"
+shell = "runs commands"
+network = "uses the network"
+database = "uses a database"
+secrets = "reads secrets"
+external_content = "reads content from outside"
+
+[boundedness]
+fixed = "takes no input"
+parameterized = "takes values as input"
+free_form = "takes free-form input"
+unknown = "input not analysed"
 
 [not_checked]
 no_agentic_artifact = "No skill, plugin, MCP server or agent was found here, so nothing was checked."
@@ -55,7 +130,8 @@ model_checkers = "Needs the checkers that use a model, which are not built yet."
 dynamic_tester = "Needs the dynamic tester, which is not built yet."
 external_scanner = "The external scanner is not connected yet."
 dependency_vulnerabilities = "Known vulnerabilities of dependencies are not checked yet."
-other_deterministic_checks = "Only the checks listed above exist so far. The other code-based checks are not built yet."
+dangerous_combination = "Needs judgment: whether private data, content from outside and a way out meet in one agent."
+called_functions = "The code reader looks inside each tool, not inside the functions that the tool calls."
 file_type = "File type that the tool does not analyse."
 too_large = "File larger than 1 MB."
 not_text = "Not a text file."
@@ -71,5 +147,6 @@ model_checkers = "Intent versus implementation, data flow, reliability, practice
 dynamic_tester = "Behaviour of MCP servers and scripts when they run"
 external_scanner = "mcpscan-cli"
 dependency_vulnerabilities = "Dependencies"
-other_deterministic_checks = "Other deterministic checks"
+dangerous_combination = "Dangerous combination of capabilities"
+called_functions = "Helper functions that the tools call"
 no_agentic_artifact = "The whole project"

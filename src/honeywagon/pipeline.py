@@ -1,9 +1,10 @@
-"""The chain of steps of one audit: read, detect, check, classify."""
+"""The chain of steps of one audit: read, detect, map, check, classify."""
 
 from collections import Counter
 from importlib.metadata import version
 from pathlib import Path
 
+from honeywagon.capability import analyse, capability_map
 from honeywagon.checks import Check, Hit, load_checks
 from honeywagon.classify import confidence_of, propose_verdict
 from honeywagon.datafiles import load_texts
@@ -13,6 +14,7 @@ from honeywagon.guard.redact import safe_evidence
 from honeywagon.models import (
     SCHEMA_VERSION,
     SEVERITIES,
+    CapabilityMap,
     Finding,
     NotChecked,
     Origin,
@@ -24,12 +26,14 @@ from honeywagon.models import (
 LAYER = "deterministic"
 # What this layer never covers, or does not cover yet. Always reported.
 NOT_COVERED = (
-    "other_deterministic_checks",
     "external_scanner",
     "dependency_vulnerabilities",
+    "dangerous_combination",
     "model_checkers",
     "dynamic_tester",
 )
+# Reported only when the project has tools written in code.
+NOT_COVERED_IN_CODE = ("called_functions",)
 
 
 def _finding(check: Check, hit: Hit, seen: Counter[str]) -> Finding:
@@ -51,7 +55,7 @@ def _finding(check: Check, hit: Hit, seen: Counter[str]) -> Finding:
         severity=check.severity,
         confidence=confidence_of(origin, None),
         fix_effort=check.fix_effort,
-        suggestion=None,
+        suggestion=safe_evidence(hit.suggestion) if hit.suggestion else None,
         origin=origin,
         verification=None,
     )
@@ -69,27 +73,29 @@ def run_audit(root: Path) -> RunResult:
     not_checked = [*project.not_read, *not_parsed]
     findings: list[Finding] = []
     checks_ran: list[str] = []
-
+    capabilities = CapabilityMap()
     verdict_key = "nothing_to_audit"
     triggered_by: tuple[str, ...] = ()
 
     if not kinds:
         not_checked.insert(0, _not_covered("no_agentic_artifact"))
     else:
+        analysis = analyse(project)
+        capabilities = capability_map(analysis)
+        not_checked.extend(analysis.not_checked)
         seen: Counter[str] = Counter()
         for check in load_checks():
             if not check.kinds.intersection(kinds):
                 continue
             checks_ran.append(check.check_id)
-            for result in check.function(project, check.options):
-                if isinstance(result, Hit):
-                    findings.append(_finding(check, result, seen))
-                else:
-                    not_checked.append(result)
+            for hit in check.function(analysis, check.options):
+                findings.append(_finding(check, hit, seen))
         findings.sort(
             key=lambda f: (SEVERITIES.index(f.severity), f.file, f.line, f.check_id)
         )
         verdict_key, triggered_by = propose_verdict(findings)
+        if analysis.tools:
+            not_checked.extend(_not_covered(key) for key in NOT_COVERED_IN_CODE)
         not_checked.extend(_not_covered(key) for key in NOT_COVERED)
 
     return RunResult(
@@ -98,6 +104,7 @@ def run_audit(root: Path) -> RunResult:
         project_kinds=kinds,
         layers_ran=(LAYER,) if kinds else (),
         checks_ran=tuple(checks_ran),
+        capability_map=capabilities,
         findings=tuple(findings),
         verdict=Verdict(
             key=verdict_key,

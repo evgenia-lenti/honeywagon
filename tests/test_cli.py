@@ -18,7 +18,8 @@ def test_text_report_starts_with_the_verdict_and_ends_with_not_checked(
     assert "Partial:" in output
     assert "SKILL.md:4" in output
     assert "sk-ant...REDACTED" in output
-    assert output.index("Proposed verdict") < output.index("Findings")
+    assert output.index("Proposed verdict") < output.index("What this project can do")
+    assert output.index("What this project can do") < output.index("Findings")
     assert output.index("Findings") < output.index("Not checked")
 
 
@@ -41,7 +42,9 @@ def test_json_report_is_the_whole_result(capsys: pytest.CaptureFixture[str]) -> 
     assert {f["check_id"] for f in result["findings"]} == {
         "hook-remote-code",
         "secret-in-file",
+        "mcp-unpinned-server",
     }
+    assert [s["name"] for s in result["capability_map"]["mcp_servers"]] == ["issues"]
     assert set(result["findings"][0]) == {
         "id",
         "check_id",

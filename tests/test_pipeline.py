@@ -17,10 +17,25 @@ def test_skill_fixture_gets_a_partial_not_recommended_verdict() -> None:
     assert [f.check_id for f in result.findings] == [
         "perm-broad-bash",
         "secret-in-file",
+        "ref-missing-file",
+        "port-absolute-path",
     ]
     assert result.verdict.key == "not_recommended"
     assert result.verdict.partial
-    assert result.verdict.triggered_by == tuple(f.id for f in result.findings)
+    assert result.verdict.triggered_by == tuple(
+        f.id for f in result.findings if f.severity == "critical"
+    )
+
+
+def test_result_carries_the_capability_map_and_the_suggested_change() -> None:
+    result = run_audit(fixture_project("agent-support-triage"))
+    bypass = next(f for f in result.findings if f.check_id == "perm-bypass-permissions")
+
+    assert [agent.permission_mode for agent in result.capability_map.agents] == [
+        "bypassPermissions"
+    ]
+    assert bypass.suggestion == 'permission_mode="default",'
+    assert bypass.fix_effort == "simple"
 
 
 def test_findings_carry_evidence_and_come_from_the_deterministic_layer() -> None:

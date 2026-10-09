@@ -17,12 +17,28 @@ kinds = ["plugin", "skill"]
 # Entries of allowed-tools that allow any shell command.
 broad_tools = ["Bash", "Bash(*)", "*"]
 
+[perm-bypass-permissions]
+severity = "critical"
+fix_effort = "simple"
+kinds = ["agent"]
+# Values of permission_mode, in the code of an agent, that switch every question off.
+bypass_modes = ["bypassPermissions"]
+# The value the suggested change puts in its place.
+safe_mode = "default"
+
+# The same mode as permissions.defaultMode in a settings file of the project.
+# Claude Code 2.1.257 and newer ignore it there, so it is a warning and not critical.
+[perm-bypass-in-settings]
+severity = "warning"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+bypass_modes = ["bypassPermissions"]
+safe_mode = "default"
+
 [hook-remote-code]
 severity = "critical"
 fix_effort = "simple"
 kinds = ["plugin", "skill", "mcp_server", "agent"]
-# Files that can define hooks.
-files = ["hooks.json", "settings.json", "settings.local.json"]
 # Commands that download something and run it.
 patterns = [
   '(?i)\b(curl|wget)\b[^|;&]*\|\s*(sudo\s+)?(ba|z|da|k)?sh\b',
@@ -30,3 +46,59 @@ patterns = [
   '(?i)\b(ba|z)?sh\s+<\(\s*(curl|wget)\b',
   '(?i)\b(iwr|irm|invoke-webrequest|invoke-restmethod)\b.*\|\s*(iex|invoke-expression)\b',
 ]
+
+[inject-shell]
+severity = "critical"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+
+[tool-free-form-sql]
+severity = "critical"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+
+[mcp-fetch-any-url]
+severity = "error"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+
+[ref-missing-file]
+severity = "error"
+fix_effort = "simple"
+kinds = ["plugin", "skill"]
+
+[test-real-database]
+severity = "error"
+fix_effort = "complex"
+kinds = ["mcp_server", "agent"]
+# Calls that open a database connection. The target is the first argument.
+connect_calls = ["sqlite3.connect"]
+# Names that mark a target as temporary.
+temporary_names = ["tmp_path", "tmpdir", "tmp_path_factory", "tempfile"]
+
+[mcp-unpinned-server]
+severity = "warning"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+# Commands that download a package and run it.
+launchers = ["npx", "bunx", "pnpx", "pnpm", "uvx", "pipx"]
+# Words between the launcher and the package name.
+subcommands = ["dlx", "exec", "run"]
+
+[port-absolute-path]
+severity = "warning"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+# Paths inside the home folder of one person. The group "user" is that person.
+patterns = [
+  '''(?i)\b[a-z]:\\+Users\\+(?P<user>[^\\/\s"']+)''',
+  '(?<![\w.])/home/(?P<user>[\w.-]+)',
+  '(?<![\w.])/Users/(?P<user>[\w.-]+)',
+]
+# Names that stand for "any user" in documentation.
+placeholder_names = ["user", "username", "you", "yourname", "name", "me", "shared", "public"]
+
+[agent-no-turn-limit]
+severity = "warning"
+fix_effort = "simple"
+kinds = ["agent"]

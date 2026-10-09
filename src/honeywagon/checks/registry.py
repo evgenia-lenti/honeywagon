@@ -4,21 +4,25 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from honeywagon.capability import Analysis
 from honeywagon.datafiles import load_data
-from honeywagon.files import Project
-from honeywagon.models import NotChecked
 
 
 @dataclass(frozen=True)
 class Hit:
-    """One place where a check found its mistake."""
+    """One place where a check found its mistake.
+
+    The suggestion is the line as it should become. A check sets it only when
+    it knows the exact text.
+    """
 
     file: str
     line: int
     evidence: str
+    suggestion: str | None = None
 
 
-CheckFunction = Callable[[Project, Mapping[str, Any]], Iterable[Hit | NotChecked]]
+CheckFunction = Callable[[Analysis, Mapping[str, Any]], Iterable[Hit]]
 DEFINITION_KEYS = frozenset({"severity", "fix_effort", "kinds"})
 
 

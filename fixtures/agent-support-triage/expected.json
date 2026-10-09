@@ -23,7 +23,7 @@
       "file": "agent.py",
       "line": 49,
       "severity": "critical",
-      "layer": "deterministic",
+      "layer": "model",
       "contains": "options = ClaudeAgentOptions("
     },
     {

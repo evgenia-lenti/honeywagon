@@ -26,9 +26,14 @@ def test_core_finds_every_planted_mistake_of_the_checks_that_exist(
     assert [e for e in result.missed if e.check_id in BUILT_CHECKS] == []
 
 
+# Checks that have unit tests but no planted mistake yet. Each one is a row in
+# docs/known-gaps.md. Remove a check from here when a fixture exercises it.
+WITHOUT_FIXTURE = {"perm-bypass-in-settings"}
+
+
 def test_every_built_check_is_exercised_by_a_fixture() -> None:
     planted = {
         expected.check_id for fixture in FIXTURES for expected in fixture.expected
     }
 
-    assert BUILT_CHECKS <= planted
+    assert BUILT_CHECKS - planted == WITHOUT_FIXTURE

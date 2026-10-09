@@ -1,0 +1,13 @@
+# What each built-in Claude Code tool touches. A tool that is not listed here,
+# such as a tool of an MCP server, gets an empty list.
+
+[touches]
+Bash = ["shell", "filesystem_read", "filesystem_write", "network"]
+Read = ["filesystem_read"]
+Grep = ["filesystem_read"]
+Glob = ["filesystem_read"]
+Write = ["filesystem_write"]
+Edit = ["filesystem_write"]
+NotebookEdit = ["filesystem_write"]
+WebFetch = ["network", "external_content"]
+WebSearch = ["network", "external_content"]

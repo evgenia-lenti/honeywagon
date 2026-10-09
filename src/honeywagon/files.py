@@ -51,12 +51,35 @@ class ProjectFile:
     def name(self) -> str:
         return self.path.rsplit("/", 1)[-1]
 
+    @property
+    def folder(self) -> str:
+        return self.path.rpartition("/")[0]
+
+    def find_line(self, text: str, after: int = 0) -> int | None:
+        """Return the first line past `after` that contains the text."""
+        for number, line in enumerate(self.lines, start=1):
+            if number > after and text in line:
+                return number
+        return None
+
 
 @dataclass(frozen=True)
 class Project:
     root: Path
     files: tuple[ProjectFile, ...]
     not_read: tuple[NotChecked, ...]
+
+    @cached_property
+    def paths(self) -> frozenset[str]:
+        """Every path that exists in the project, read or not."""
+        return frozenset(
+            [file.path for file in self.files] + [item.what for item in self.not_read]
+        )
+
+    def exists(self, path: str) -> bool:
+        """Say whether the path is a file or a folder of the project."""
+        prefix = path.rstrip("/") + "/"
+        return path in self.paths or any(p.startswith(prefix) for p in self.paths)
 
     def file(self, path: str) -> ProjectFile | None:
         return next((file for file in self.files if file.path == path), None)
