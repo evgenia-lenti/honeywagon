@@ -27,18 +27,20 @@ Three things are worth knowing before you use it:
 ### What it checks today
 
 The tool does three things. It lists what your project can do, it points to the parts
-that deserve attention first, and it looks for fifteen mistakes. More are being added.
+that deserve attention first, and it looks for nineteen mistakes. More are being added.
 
 Serious mistakes, which the report marks as critical:
 
 | What it finds | Why it matters | What you can do |
 | --- | --- | --- |
-| A key or token written in a file | Anyone who can read the file can use the key as if they were you | Ask the service to cancel that key and give you a new one. Keep the new key outside the project, in an environment variable. Deleting the line is not enough, because the old key stays in the project's history |
+| A key or token written in a file, or in a header of an MCP server | Anyone who can read the file can use the key as if they were you | Ask the service to cancel that key and give you a new one. Keep the new key outside the project, in an environment variable. Deleting the line is not enough, because the old key stays in the project's history |
 | A skill that allows any shell command | Whoever uses the skill lets Claude run any command on their computer without being asked | List only the commands the skill needs, for example `Bash(git log *)` in place of `Bash` |
 | An agent that never asks before it acts | The agent runs every tool it has, including the ones that delete things, with no person approving | Use the normal permission mode. The report shows the exact change |
 | A hook that downloads a script and runs it | A hook runs by itself. Whoever controls that web address can run commands on every computer that uses your project | Remove the hook, or keep the script inside the project where it can be read |
 | Input of a tool that goes into a shell command | Whoever controls the input can add their own commands | Ask a developer. The command has to be built in a way that keeps the input apart |
 | Input of a tool pasted into the text of a SQL statement | Whoever controls the input can change what the statement does: read other rows and tables, or change and delete data | Ask a developer. The values have to be passed apart from the statement, as parameters |
+| Input of a tool that decides which file is opened | With `../` in the name, the tool can be pointed at any file the program can reach: keys, private files, or a file to overwrite | Ask a developer. The tool has to check that the file stays inside its own folder |
+| Input of a tool that is loaded in a way that can run code | Formats such as `pickle` can carry instructions that run while the data is loaded | Ask a developer. Data from outside is read as JSON, never as `pickle` |
 | A tool that runs any SQL it is given | The model can read, change or delete anything in the database | Ask a developer. The tool should offer specific questions with values, not free SQL |
 
 Mistakes that make the project fail or misbehave, marked as error:
@@ -47,6 +49,8 @@ Mistakes that make the project fail or misbehave, marked as error:
 | --- | --- | --- |
 | A tool that calls any address it is given | It can be pointed at internal systems that should not be reached | Ask a developer to limit the tool to the addresses it needs |
 | A skill that points to a file that does not exist | The step fails, or Claude makes something up | Add the file, or remove the step |
+| An MCP server that is reached without encryption | The address starts with `http` and not `https`, so whoever sits on the network in between can read and change everything, including a key | Use the `https` address of the server |
+| The check of a server's identity is switched off | The code accepts a forged server, so what is sent can be read and changed on the way | Remove `verify=False`. If the server has its own certificate, ask a developer how to trust that one certificate |
 | A test that opens the real database | Running the tests reads or changes real data | Ask a developer to make the tests use a temporary database |
 | A dependency, or a downloaded MCP server, in a version with a known security problem | The problem is published, so anyone can look it up and try it against your project | Move to a version that fixes it. The report lists, for each problem, the versions that fix it. This is found only when the audit runs with the lookup switched on, and it is marked critical when the public database rates the problem as critical |
 
@@ -138,7 +142,7 @@ yourself whether you expected each line. It can have six parts:
 | --- | --- |
 | Claude may use these without asking | The tools your skill or agent allows in advance. "any use" means with no limit, "restricted" means only the listed commands |
 | Tools in the code | Each tool that an MCP server or agent defines, what it touches (files, commands, network, database) and what kind of input it takes |
-| MCP servers it starts | Each server and the command that starts it |
+| MCP servers it starts or connects to | Each server, and the command that starts it or the address it is reached at |
 | Hooks that run by themselves | Each hook, when it runs and what it runs |
 | Agents | Each agent, whether it asks before acting, and whether it has a limit on turns |
 | Permission mode set in settings | The mode that a settings file makes every session start in |
@@ -178,7 +182,7 @@ can do, not because something is wrong with it. A correct project has parts unde
 
 | Group | When a part is listed there |
 | --- | --- |
-| Look first | A tool takes free-form input, runs commands, or changes or deletes data. A hook. Any shell command is allowed. Something never asks before it acts |
+| Look first | A tool takes free-form input, runs commands, loads data in a way that can run code, or changes or deletes data. A hook. Any shell command is allowed. Something never asks before it acts |
 | Look next | A tool uses the network or reads data. A file starts an MCP server. Tools are allowed without asking, with limits |
 | Look last | A tool touches nothing outside the program |
 
@@ -224,6 +228,16 @@ name would become known to the database, so ask before you run it.
 
 When the lookup did run, a line near the top of the report says what was sent:
 `Sent to the OSV database: PyPI requests 2.31.0`.
+
+Another line is about MCP servers that your project reaches over the network:
+
+```
+- team-wiki: Whether this server asks who is calling cannot be told from the
+  configuration. A server that signs you in through the browser has no header here.
+```
+
+It is not a finding. The file that names the server does not show whether the server
+checks who is calling, so ask whoever runs the server.
 
 ### What to do with a finding
 
@@ -333,8 +347,9 @@ Each finding has `id`, `check_id`, `title`, `file`, `line`, `evidence`, `consequ
 - `verification` is empty today.
 
 Each entry of `capabilities` has `name`, `kind` (`allowed_tool` or `tool`),
-`declared_in` with file and line, `scope`, `touches`, `boundedness`, `data_scope` and
-`requires_confirmation`.
+`declared_in` with file and line, `scope`, `touches`, `boundedness`, `data_scope`,
+`requires_confirmation` and `unsafe_loading`, which is true for a tool that loads data
+with a call such as `pickle.loads`.
 
 - `touches` uses a closed list: `filesystem_read`, `filesystem_write`, `shell`,
   `network`, `database`, `secrets`, `external_content`.
@@ -386,7 +401,20 @@ It skips these folders without listing them: `.git`, `node_modules`, `.venv`, `v
 
 ### Limits to keep in mind when you advise
 
-- **Fifteen checks.** The report lists the ones that ran under "Checks that ran".
+- **Nineteen checks.** The report lists the ones that ran under "Checks that ran".
+- **A path from input is not reported when the tool makes a known containment
+  check:** `is_relative_to`, `os.path.commonpath`, `os.path.basename` or
+  `secure_filename`. The tool does not judge whether the check is written correctly.
+  Only `open`, `read_text`, `read_bytes`, `write_text` and `write_bytes` are seen, not
+  calls that delete or copy files.
+- **Unsafe loading is reported only for the input of a tool.** `pickle.loads` on data
+  that came from the network or from a file of someone else is not found.
+- **Switched-off TLS verification is found in two forms:** `verify=False` on a request
+  or a client, and `ssl._create_unverified_context()`.
+- **For a remote MCP server the tool reports two things only:** an `http` address, and
+  a key written in a header such as `Authorization` or `X-API-Key`. Whether the server
+  asks who is calling is listed under "Not checked". A server that the project itself
+  runs and opens to the network is not examined.
 - **Dependencies are looked up only with `--lookup`,** and only the ones the project
   names itself, with one exact version. The packages that those packages bring with
   them are not looked up, and lock files such as `uv.lock` are not read. Neither is

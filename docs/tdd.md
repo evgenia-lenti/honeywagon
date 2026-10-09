@@ -177,7 +177,7 @@ One entry per tool or capability found:
 }
 ```
 
-`kind` is `allowed_tool` for a tool that Claude may use without asking, and `tool` for a tool defined in the project's code. `agents` holds, for each agent, its permission mode and whether it has a limit on turns. `permission_modes` holds the mode that each settings file makes sessions start in. The kinds of the project and the files that were not analysed are fields of the `RunResult`, not of the map.
+`kind` is `allowed_tool` for a tool that Claude may use without asking, and `tool` for a tool defined in the project's code. `mcp_servers` holds, for each server, its name, the command that starts it or the address it is reached at, the names of its environment variables, and `remote`, which is true for a server reached over the network. `agents` holds, for each agent, its permission mode and whether it has a limit on turns. `permission_modes` holds the mode that each settings file makes sessions start in. The kinds of the project and the files that were not analysed are fields of the `RunResult`, not of the map.
 
 `touches` takes values from a closed list: `filesystem_read`, `filesystem_write`, `shell`, `network`, `database`, `secrets`, `external_content`. The map records these as facts and judges nothing. Whether a dangerous combination exists (private data, untrusted content, a way out to the outside) is judged by a checker with a model, with the map as its input: code can see that a tool reads files, but not that those files are email from strangers.
 
@@ -235,7 +235,7 @@ For agents there is one adapter per framework behind a common interface. In the 
 
 ### Off-the-shelf scanner
 
-No off-the-shelf scanner is integrated. mcpscan-cli was measured on the fixtures and left out: it found nothing that the tool's own checks did not find, and the rules of it that are useful are small checks on the analysis the core already builds. The numbers and the reasons are in `design.md`, section "Measurement and decision". The checks to write are listed in `known-gaps.md`.
+No off-the-shelf scanner is integrated. mcpscan-cli was measured on the fixtures and left out: it found nothing that the tool's own checks did not find, and the rules of it that are useful are small checks on the analysis the core already builds. The numbers and the reasons are in `design.md`, section "Measurement and decision". Four of those rules were written as checks of the tool's own. The fifth is listed in `known-gaps.md`.
 
 ### Check registry
 
@@ -311,7 +311,7 @@ Automatically generated files (lockfiles, compiled files) go into a separate gro
 **First version, as built.** The deterministic core builds a simpler map, from the capability map alone:
 
 - **Groups.** One group per file that gives capabilities: a `SKILL.md`, a Python file with tools or an agent, a file with hooks, the `.mcp.json`, a settings file. Files that belong to one feature are not joined, and a script that a skill or a hook runs belongs to no group.
-- **Tiers.** `high`, `medium` and `low`. Each fact in the capability map is a reason with its own tier, defined in a data file, and a group gets the highest tier among its reasons. `high`: a tool with free-form input, a tool that runs commands, a tool that changes or deletes data, a tool whose data access could not be read, a hook, any shell command allowed without asking, a permission mode that never asks. `medium`: a tool that uses the network or reads data, a file that starts an MCP server, tools allowed without asking with limits, an agent. `low`: a tool that touches nothing outside the program.
+- **Tiers.** `high`, `medium` and `low`. Each fact in the capability map is a reason with its own tier, defined in a data file, and a group gets the highest tier among its reasons. `high`: a tool with free-form input, a tool that runs commands, a tool that loads data in a way that can run code, a tool that changes or deletes data, a tool whose data access could not be read, a hook, any shell command allowed without asking, a permission mode that never asks. `medium`: a tool that uses the network or reads data, a file that starts an MCP server, tools allowed without asking with limits, an agent. `low`: a tool that touches nothing outside the program.
 - **In the report** the tiers are shown as an order of attention ("Look first", "Look next", "Look last"), with the reasons and the names of the tools under each group. They are not called risk levels, because a correct project has groups in the first tier too.
 
 The signals that need judgment are not computed: authentication and authorization, personal data, secrets, untrusted content, complex logic, code that looks generated in one go. They wait for the checkers with a model.

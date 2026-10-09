@@ -10,9 +10,9 @@ fake and was never valid.
 | Fixture | Kind | Planted mistakes |
 | --- | --- | --- |
 | `skill-release-notes` | skill | 5 |
-| `plugin-team-helper` | plugin | 6 |
-| `mcp-customer-db` | MCP server | 6 |
-| `agent-support-triage` | agent | 6 |
+| `plugin-team-helper` | plugin | 8 |
+| `mcp-customer-db` | MCP server | 7 |
+| `agent-support-triage` | agent | 8 |
 | `clean-plugin` | plugin | 0 |
 
 ## Layout

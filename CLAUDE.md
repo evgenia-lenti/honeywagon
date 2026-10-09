@@ -33,7 +33,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 3 of 6: deterministic core, part 3e of five.**
+**Step 4 of 6: Claude Code plugin with `/audit`.**
 
 Update this line when a step is finished and reviewed.
 
@@ -63,8 +63,9 @@ Step 3 is built in five parts, each with its own plan, branch and review:
   Known vulnerabilities of dependencies come from the OSV database, only when the
   audit is run with `--lookup`.
 - 3e: four checks that came out of that measurement: a file path built from the
-  input of a tool, unsafe deserialisation, switched-off TLS verification, a remote
-  MCP server without authentication.
+  input of a tool, unsafe deserialisation, switched-off TLS verification, and a
+  remote MCP server that is reached without encryption or has a key written in its
+  header.
 
 ### The six checkers (step 5), in the order they are added
 

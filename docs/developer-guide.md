@@ -48,14 +48,16 @@ src/honeywagon/
     data_scope.py     the data a tool reaches, from the SQL it runs
   checks/
     registry.py       joins each check's definition with its function
-    secrets.py        secret-in-file
+    secrets.py        secret-in-file, also for a key in a header of an MCP server
     permissions.py    perm-broad-bash
     agents.py         perm-bypass-permissions, perm-bypass-in-settings,
                       agent-no-turn-limit
     hooks.py          hook-remote-code
-    tools.py          inject-shell, inject-sql, tool-free-form-sql,
+    tools.py          inject-shell, inject-sql, inject-path,
+                      inject-deserialization, tool-free-form-sql,
                       mcp-fetch-any-url
-    mcp_servers.py    mcp-unpinned-server
+    network.py        net-tls-off
+    mcp_servers.py    mcp-unpinned-server, mcp-plain-http
     dependencies.py   dep-security
     references.py     ref-missing-file
     portability.py    port-absolute-path
@@ -130,10 +132,10 @@ What the `Analysis` offers a check:
 | --- | --- |
 | `project` | The files that were read: `files`, `named(...)`, `with_suffix(...)`, `exists(path)` |
 | `allowed_tools` | Each entry of `allowed-tools` in a `SKILL.md`, with its line |
-| `mcp_servers` | Each server of a `.mcp.json`: name, command, arguments, names of environment variables |
+| `mcp_servers` | Each server of a `.mcp.json`: name, command and arguments or address, names of environment variables, and the headers of a remote server with their values |
 | `hooks` | Each command hook: event, command, line |
 | `permission_modes` | The `permissions.defaultMode` of each settings file that sets one |
-| `python` | Each parsed Python file. `module.calls("sqlite3.connect")` yields the calls to one function, with import aliases resolved |
+| `python` | Each parsed Python file. `module.calls("sqlite3.connect")` yields the calls to one function, with import aliases resolved. `module.tls_off` holds the lines where TLS verification is switched off |
 | `tools` | Each tool defined in Python, with its `effects` |
 | `agent_options` | Each `ClaudeAgentOptions(...)` call, with its keywords and their lines |
 
@@ -161,8 +163,21 @@ A database effect has two more facts:
   `.format`. `effect.input_in_text` is true when input of the tool is pasted into a
   shell command or into such a statement. `inject-sql` and `inject-shell` read it.
 
-A tool also has `databases`: the target of each `sqlite3.connect(...)` call inside it,
-as a name written in the code or as the environment variable it is read from.
+A tool also has:
+
+- `databases`: the target of each `sqlite3.connect(...)` call inside it, as a name
+  written in the code or as the environment variable it is read from.
+- `unsafe_loads`: each call that rebuilds objects from bytes or text, such as
+  `pickle.loads`, with how much of what it loads comes from the tool's input.
+- `path_checked`: whether the tool makes one of the calls that keep a path inside its
+  folder. `inject-path` stays silent for such a tool.
+
+**A secret that has no known shape.** `safe_evidence` hides keys by the shapes in
+`secret_patterns.toml`. A key that is known by where it stands, such as the value of
+an `Authorization` header, would pass through it. A check that reports such a key
+hides it itself with `guard.redact.mask(line, secret)` before it yields the hit.
+`guard.redact.address(url)` does the same for an address: it drops the user name and
+password in front of the host and whatever follows a question mark.
 
 ## The data scope
 
@@ -291,8 +306,9 @@ Follow these steps in order. The example adds a check with the id `example-check
    `src/honeywagon/checks/__init__.py`. A definition in `checks.toml` with no
    registered function fails when the checks are loaded.
 
-6. **Write the tests** in `tests/test_checks.py`: one where the mistake is found with
-   the right file and line, and at least one correct variant that must not be flagged.
+6. **Write the tests** in `tests/test_checks.py` or `tests/test_checks_more.py`: one
+   where the mistake is found with the right file and line, and at least one correct
+   variant that must not be flagged.
 
 7. **Run the evaluation.** `evaluate.py --layer deterministic` must show the planted
    mistake as found and no false finding. `tests/test_fixture_evaluation.py` checks
@@ -307,8 +323,9 @@ Follow these steps in order. The example adds a check with the id `example-check
 Severity, fix effort, the kinds a check applies to, and its options are in
 `checks.toml`. The patterns for keys are in `secret_patterns.toml`. The Python calls
 that count as shell, network or database are in `python_calls.toml`. The tier of each
-reason in the risk map is in `risk.toml`. The wording is in `text/en.toml`. Changing these needs no Python, but run the tests and the evaluation
-afterwards: a looser pattern can produce false findings on the clean fixture.
+reason in the risk map is in `risk.toml`. The wording is in `text/en.toml`. Changing
+these needs no Python, but run the tests and the evaluation afterwards: a looser
+pattern can produce false findings on the clean fixture.
 
 ## Dependencies and the lookup
 

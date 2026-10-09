@@ -66,7 +66,9 @@ Because of the first caution, the rules that our checks do not have were tried o
 - It has one maintainer and two published releases.
 - About half of its 22 rules are outside the scope of this tool: GitHub workflows and click handlers in web pages.
 - Its texts are written for developers. Ours are written for creators who do not program.
-- Each of the five useful rules is a small check on the analysis that the core already builds. They are listed in `known-gaps.md` as checks to write: four in part 3e of the core, and the fifth, which needs judgment, with the checkers of step 5.
+- Each of the five useful rules is a small check on the analysis that the core already builds. Four were written in part 3e of the core. The fifth, which needs judgment, waits for the checkers of step 5.
+
+One of the four was changed on the way. mcpscan-cli reports a remote MCP server that has no header as a server without authentication. The documentation of Claude Code says that a server which signs the user in through the browser correctly has no header in the file. So the tool reports only what the file can prove, an address without encryption and a key written in a header, and lists the question of authentication under "not checked".
 
 The first reason in the proposal above, that everything runs locally, still holds for the tool as a whole: it has no scanner that could send anything anywhere.
 
