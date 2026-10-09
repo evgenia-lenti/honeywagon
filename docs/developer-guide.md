@@ -35,11 +35,22 @@ src/honeywagon/
   frontmatter.py      reads the YAML block at the top of a Markdown file
   classify.py         confidence and proposed verdict
   datafiles.py        loads the files in data/
+  capability/
+    __init__.py       Analysis (what the checks read) and the capability map
+    config_files.py   allowed tools, MCP servers and hooks from configuration files
+    python_code.py    tools, what they touch, and agent options, from Python code
   checks/
     registry.py       joins each check's definition with its function
     secrets.py        secret-in-file
     permissions.py    perm-broad-bash
+    agents.py         perm-bypass-permissions, perm-bypass-in-settings,
+                      agent-no-turn-limit
     hooks.py          hook-remote-code
+    tools.py          inject-shell, tool-free-form-sql, mcp-fetch-any-url
+    mcp_servers.py    mcp-unpinned-server
+    references.py     ref-missing-file
+    portability.py    port-absolute-path
+    project_tests.py  test-real-database
   guard/
     redact.py         finds secrets and removes them from every output
   report/
@@ -48,6 +59,8 @@ src/honeywagon/
   data/
     checks.toml           severity, fix effort, kinds and options of each check
     secret_patterns.toml  the shapes of keys and tokens
+    builtin_tools.toml    what each built-in Claude Code tool touches
+    python_calls.toml     the Python calls the code reader recognises
     text/en.toml          every text the creator reads
 tests/                unit tests, and the evaluation on the fixtures
 fixtures/             fake projects with planted mistakes, see fixtures/README.md
@@ -64,19 +77,64 @@ evaluate.py           compares the tool's findings with the planted mistakes
 2. **Detect.** `detect.detect` returns the kinds found: `plugin`, `skill`,
    `mcp_server`, `agent`. With no kind, no check runs and the verdict is
    `nothing_to_audit`.
-3. **Check.** Every check whose `kinds` include a detected kind runs. A check yields
-   `Hit` objects (file, line, the line's text) and, when it cannot parse a file,
-   `NotChecked` objects.
-4. **Build findings.** For each hit the pipeline takes the severity and fix effort
+3. **Analyse.** `capability.analyse` reads the configuration files and parses the
+   Python code once, into an `Analysis`. `capability.capability_map` turns it into
+   the `CapabilityMap` of the result. A file that cannot be parsed becomes a
+   `NotChecked` entry here, so the checks do not deal with broken files.
+4. **Check.** Every check whose `kinds` include a detected kind runs on the
+   `Analysis` and yields `Hit` objects: file, line, the line's text and, rarely, a
+   suggested change.
+5. **Build findings.** For each hit the pipeline takes the severity and fix effort
    from `checks.toml` and the title and consequence from `text/en.toml`. It passes
-   the evidence through `guard.redact.safe_evidence` and computes the id.
-5. **Classify.** `classify.confidence_of` sets the confidence and
+   the evidence and the suggestion through `guard.redact.safe_evidence` and computes
+   the id.
+6. **Classify.** `classify.confidence_of` sets the confidence and
    `classify.propose_verdict` applies the fixed rules.
-6. **Report what was not covered.** The pipeline always adds the entries in
+7. **Report what was not covered.** The pipeline always adds the entries in
    `NOT_COVERED`: the layers and checks that do not exist yet.
 
 `cli.main` then prints `report.render_text` or `report.render_json` and returns the
 exit code.
+
+## The analysis and the capability map
+
+There are two views of the same facts, and the difference matters:
+
+- **`Analysis`** is internal. It holds raw text from the audited project: hook
+  commands, MCP server arguments, parsed Python. The checks read it. It never goes
+  into an output.
+- **`CapabilityMap`** is the public summary in the result and in the report. Every
+  command in it has passed through `safe_evidence`, and for environment variables it
+  keeps only the names.
+
+What the `Analysis` offers a check:
+
+| Attribute | What it holds |
+| --- | --- |
+| `project` | The files that were read: `files`, `named(...)`, `with_suffix(...)`, `exists(path)` |
+| `allowed_tools` | Each entry of `allowed-tools` in a `SKILL.md`, with its line |
+| `mcp_servers` | Each server of a `.mcp.json`: name, command, arguments, names of environment variables |
+| `hooks` | Each command hook: event, command, line |
+| `permission_modes` | The `permissions.defaultMode` of each settings file that sets one |
+| `python` | Each parsed Python file. `module.calls("sqlite3.connect")` yields the calls to one function, with import aliases resolved |
+| `tools` | Each tool defined in Python, with its `effects` |
+| `agent_options` | Each `ClaudeAgentOptions(...)` call, with its keywords and their lines |
+
+An `Effect` is one call inside a tool that reaches outside the program. It has a
+`touch` (`shell`, `database`, `network`, `filesystem_read`, `filesystem_write`), a
+`line`, and `input`: how much of the command, SQL statement or address comes from the
+tool's input.
+
+| `input` | Meaning | Example |
+| --- | --- | --- |
+| `none` | The input does not reach it | `conn.execute("SELECT 1")` |
+| `part` | The input is a piece of it | `urlopen(f"https://api.example.com/{item}")` |
+| `whole` | The input is all of it | `conn.execute(sql)` where `sql` is the tool's argument |
+
+The code reader follows an input through local names (`query = sql`), and through the
+single dict that an Agent SDK tool receives (`args["sql"]`). It does not follow it
+into another function. The calls it recognises are listed in
+`data/python_calls.toml`.
 
 ## Rules the code must keep
 
@@ -88,8 +146,8 @@ holds because no code in the package writes a file.
 - **No secret in any output.** Evidence always goes through `safe_evidence`. The
   finding id is computed from the redacted evidence.
 - **Severity, confidence and verdict come from code and data,** never from a model.
-- **What was not checked is reported.** A check that cannot parse a file yields a
-  `NotChecked`. It does not skip the file silently.
+- **What was not checked is reported.** A file that cannot be parsed becomes a
+  `NotChecked` entry in the analysis. It is not skipped silently.
 - **The same input gives the same result.** Files are read in sorted order and
   findings are sorted. There is no timestamp in the result.
 - **No text for the creator inside Python.** It goes into `data/text/en.toml`.
@@ -130,20 +188,25 @@ Follow these steps in order. The example adds a check with the id `example-check
    from collections.abc import Iterator, Mapping
    from typing import Any
 
+   from honeywagon.capability import Analysis
    from honeywagon.checks.registry import Hit, register
-   from honeywagon.files import Project
 
 
    @register("example-check")
-   def example_check(project: Project, options: Mapping[str, Any]) -> Iterator[Hit]:
-       for file in project.named("SKILL.md"):
+   def example_check(analysis: Analysis, options: Mapping[str, Any]) -> Iterator[Hit]:
+       for file in analysis.project.named("SKILL.md"):
            for number, line in enumerate(file.lines, start=1):
                if "something wrong" in line:
                    yield Hit(file.path, number, line)
    ```
 
    The function only finds the place. It does not set the severity, the texts or the
-   confidence, and it does not redact.
+   confidence, and it does not redact. If the check needs a fact that the analysis
+   does not have yet, add it to `capability/` and not to the check, so that the
+   capability map and the other checks can use it too.
+
+   `Hit` takes an optional fourth value, the suggested change. Set it only when the
+   code knows the exact line as it should become.
 
 5. **Register the module.** If it is a new module, import it in
    `src/honeywagon/checks/__init__.py`. A definition in `checks.toml` with no
@@ -157,12 +220,14 @@ Follow these steps in order. The example adds a check with the id `example-check
    the same on every test run, and also that every check has a fixture.
 
 8. **Update the documentation:** the table of checks in `docs/user-guide.md`, and the
-   limits listed there if they changed.
+   limits listed there if they changed. Add to `docs/known-gaps.md` whatever the new
+   check does not see, and delete the rows it closes.
 
 ## Tuning a check without code
 
 Severity, fix effort, the kinds a check applies to, and its options are in
-`checks.toml`. The patterns for keys are in `secret_patterns.toml`. The wording is in
+`checks.toml`. The patterns for keys are in `secret_patterns.toml`. The Python calls
+that count as shell, network or database are in `python_calls.toml`. The wording is in
 `text/en.toml`. Changing these needs no Python, but run the tests and the evaluation
 afterwards: a looser pattern can produce false findings on the clean fixture.
 

@@ -12,10 +12,10 @@ it audits. The creator of a project decides what goes to production.
 
 ## Status
 
-Under construction: step 3 of 6, the deterministic core. The `audit` command runs and
-gives a report with a proposed verdict, but it has only three checks so far: keys
-written in files, a skill that allows any shell command, and a hook that downloads a
-script and runs it. Everything else is listed in the report as "not checked".
+Under construction: step 3 of 6, the deterministic core. The `audit` command lists
+what a project can do (its tools, MCP servers, hooks and agents), runs thirteen checks
+written in code, and gives a report with a proposed verdict. Nothing that needs
+judgment is checked yet, and the report says so under "not checked".
 
 ## Requirements
 
@@ -72,8 +72,8 @@ per kind of project:
 .venv\Scripts\python evaluate.py --layer deterministic
 ```
 
-Today it finds 5 of the 15 planted mistakes that code can find, with no false
-finding.
+Today it finds all 14 planted mistakes that code can find, with no false finding. The
+other 6 need judgment and wait for the checkers that use a model.
 
 ## Documentation
 
@@ -82,6 +82,7 @@ What works today:
 - [user-guide.md](docs/user-guide.md): how to run an audit and read the report
 - [developer-guide.md](docs/developer-guide.md): how the code is organised and how to
   add a check
+- [known-gaps.md](docs/known-gaps.md): what the tool does not see yet
 
 The design lives in [docs/](docs/):
 

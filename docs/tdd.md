@@ -154,28 +154,35 @@ One entry per tool or capability found:
 
 ```json
 {
-  "project_kind": "skill",
   "capabilities": [
     {
       "name": "Bash",
+      "kind": "allowed_tool",
       "declared_in": {"file": "SKILL.md", "line": 6},
       "scope": "unrestricted",
       "touches": ["shell", "filesystem_read", "filesystem_write", "network"],
+      "boundedness": "unknown",
+      "data_scope": "unknown",
       "requires_confirmation": false
     }
   ],
   "mcp_servers": [],
   "hooks": [],
-  "not_analyzed": ["scripts/helper.sh"]
+  "agents": [],
+  "permission_modes": []
 }
 ```
 
-`touches` takes values from a closed list: `filesystem_read`, `filesystem_write`, `shell`, `network`, `database`, `secrets`, `external_content`. The dangerous combination (private data, untrusted content, a way out to the outside) is computed over this list.
+`kind` is `allowed_tool` for a tool that Claude may use without asking, and `tool` for a tool defined in the project's code. `agents` holds, for each agent, its permission mode and whether it has a limit on turns. `permission_modes` holds the mode that each settings file makes sessions start in. The kinds of the project and the files that were not analysed are fields of the `RunResult`, not of the map.
+
+`touches` takes values from a closed list: `filesystem_read`, `filesystem_write`, `shell`, `network`, `database`, `secrets`, `external_content`. The map records these as facts and judges nothing. Whether a dangerous combination exists (private data, untrusted content, a way out to the outside) is judged by a checker with a model, with the map as its input: code can see that a tool reads files, but not that those files are email from strangers.
 
 Each entry in the map also has two fields for data access:
 
-- **`data_scope`:** database, tables, columns and actions (read, write, delete) that the tool touches, as far as they are visible from the code. Whatever cannot be determined is marked as `unknown`, not omitted.
+- **`data_scope`:** database, tables, columns and actions (read, write, delete) that the tool touches, as far as they are visible from the code. Whatever cannot be determined is marked as `unknown`, not omitted. Until part 3c of the core it is always `unknown`, because the SQL is not parsed yet. Part 3c fills it in for queries written as constant text, before the risk map is built, because the risk map needs to know which tools change or delete data.
 - **`boundedness`:** `fixed` when the tool executes a predefined query or action, `parameterized` when it accepts values into a predefined query, `free_form` when it accepts free SQL, a command or an address composed by the agent.
+
+The checks do not read the map. They read the analysis it is made from, which still holds the raw text of commands and code. The map is the summary that is safe to show: commands in it are redacted, and for environment variables it keeps only the names.
 
 The creator's intent is not asked for in a separate file. The repos already contain documents that describe what they want to build, such as workshop notes. The "intent versus implementation" checker reads them and compares what they say with the `data_scope` and the capabilities in the map. Because it is free text, every difference comes out as a question to the creator, with the document excerpt as evidence.
 

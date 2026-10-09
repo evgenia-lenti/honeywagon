@@ -23,13 +23,36 @@ Three things are worth knowing before you use it:
 
 ### What it checks today
 
-The tool looks for three mistakes so far. More are being added.
+The tool does two things. It lists what your project can do, and it looks for thirteen
+mistakes. More are being added.
+
+Serious mistakes, which the report marks as critical:
 
 | What it finds | Why it matters | What you can do |
 | --- | --- | --- |
 | A key or token written in a file | Anyone who can read the file can use the key as if they were you | Ask the service to cancel that key and give you a new one. Keep the new key outside the project, in an environment variable. Deleting the line is not enough, because the old key stays in the project's history |
 | A skill that allows any shell command | Whoever uses the skill lets Claude run any command on their computer without being asked | List only the commands the skill needs, for example `Bash(git log *)` in place of `Bash` |
+| An agent that never asks before it acts | The agent runs every tool it has, including the ones that delete things, with no person approving | Use the normal permission mode. The report shows the exact change |
 | A hook that downloads a script and runs it | A hook runs by itself. Whoever controls that web address can run commands on every computer that uses your project | Remove the hook, or keep the script inside the project where it can be read |
+| Input of a tool that goes into a shell command | Whoever controls the input can add their own commands | Ask a developer. The command has to be built in a way that keeps the input apart |
+| A tool that runs any SQL it is given | The model can read, change or delete anything in the database | Ask a developer. The tool should offer specific questions with values, not free SQL |
+
+Mistakes that make the project fail or misbehave, marked as error:
+
+| What it finds | Why it matters | What you can do |
+| --- | --- | --- |
+| A tool that calls any address it is given | It can be pointed at internal systems that should not be reached | Ask a developer to limit the tool to the addresses it needs |
+| A skill that points to a file that does not exist | The step fails, or Claude makes something up | Add the file, or remove the step |
+| A test that opens the real database | Running the tests reads or changes real data | Ask a developer to make the tests use a temporary database |
+
+Unnecessary risks, marked as warning:
+
+| What it finds | Why it matters | What you can do |
+| --- | --- | --- |
+| An MCP server downloaded without a fixed version | Each start may run a different version, with no warning | Add the version to the name, for example `name@1.2.3` |
+| A path into one person's home folder | It works only on that person's computer | Use a path relative to the project |
+| An agent with no limit on turns | A stuck agent keeps running and keeps costing | Set a limit |
+| A settings file that asks for no permission prompts | New versions of Claude Code ignore this inside a project. Old versions obey it and run everything without asking | Remove it. The report shows the exact change |
 
 ### How to run it
 
@@ -51,11 +74,17 @@ project decides what goes to production.
 
 Found in this project: skill
 Layers that ran: deterministic
-Checks that ran: secret-in-file, perm-broad-bash, hook-remote-code
+Checks that ran: secret-in-file, perm-broad-bash, hook-remote-code, ...
 
 Proposed verdict: Not recommended for use
 Partial: only the deterministic layer ran, so the verdict covers only what code can check.
 Because of: perm-broad-bash:6b6f70, secret-in-file:4ee8cb
+
+What this project can do
+  Claude may use these without asking
+    Bash  (SKILL.md:4)  any use
+    Read  (SKILL.md:4)  any use
+    Grep  (SKILL.md:4)  any use
 
 Findings
 
@@ -89,6 +118,23 @@ the checks that need a model are not built yet.
 
 **Because of** lists the findings that led to the verdict.
 
+**What this project can do** is a list of facts, not of problems. Read it and ask
+yourself whether you expected each line. It can have six parts:
+
+| Part | What it lists |
+| --- | --- |
+| Claude may use these without asking | The tools your skill or agent allows in advance. "any use" means with no limit, "restricted" means only the listed commands |
+| Tools in the code | Each tool that an MCP server or agent defines, what it touches (files, commands, network, database) and what kind of input it takes |
+| MCP servers it starts | Each server and the command that starts it |
+| Hooks that run by themselves | Each hook, when it runs and what it runs |
+| Agents | Each agent, whether it asks before acting, and whether it has a limit on turns |
+| Permission mode set in settings | The mode that a settings file makes every session start in |
+
+Each part appears only when the project has something of that kind.
+
+A tool that "takes free-form input" does whatever text it is given: any command, any
+SQL or any address. Such a tool is as powerful as the system behind it.
+
 **Findings** are grouped by how serious they are:
 
 | Severity | What it means |
@@ -108,6 +154,9 @@ Each finding has four lines:
 3. After the `>` sign, the exact line from your file. This is the evidence. Keys are
    never shown in full: you see the first six characters and then `...REDACTED`.
 4. What can happen because of it.
+
+Some findings have a fifth line, **Suggested change**. It is the line as it should
+become. The tool writes it only when it is certain of the exact text.
 
 **Not checked** lists what the tool did not look at, and why. Read it every time.
 
@@ -165,6 +214,7 @@ the same.
 | `project_kinds` | Any of `plugin`, `skill`, `mcp_server`, `agent` |
 | `layers_ran` | Now `deterministic`, or empty when there was nothing to audit |
 | `checks_ran` | The ids of the checks that ran on this project |
+| `capability_map` | What the project can do: `capabilities`, `mcp_servers`, `hooks`, `agents`, `permission_modes` |
 | `findings` | The list of findings, most severe first |
 | `verdict` | `key`, `text`, `partial`, and `triggered_by` with the ids of the findings that caused it |
 | `not_checked` | A list of `what` and `reason` |
@@ -176,7 +226,24 @@ Each finding has `id`, `check_id`, `title`, `file`, `line`, `evidence`, `consequ
   line number, so it stays the same when lines above the finding are added or removed.
 - `confidence` is `high` for everything the tool finds today, because every check is
   code with one right answer.
-- `suggestion` and `verification` are empty today.
+- `suggestion` is filled for two cases only: a key in a JSON file, where the value
+  becomes a reference to an environment variable, and the bypass permission mode, in
+  an agent or in a settings file.
+- `verification` is empty today.
+
+Each entry of `capabilities` has `name`, `kind` (`allowed_tool` or `tool`),
+`declared_in` with file and line, `scope`, `touches`, `boundedness`, `data_scope` and
+`requires_confirmation`.
+
+- `touches` uses a closed list: `filesystem_read`, `filesystem_write`, `shell`,
+  `network`, `database`, `secrets`, `external_content`.
+- `boundedness` is `fixed` when the tool takes no input, `free_form` when its input
+  becomes the whole command, SQL statement or address, and `parameterized` otherwise.
+- `data_scope` is always `unknown` today. The tool does not read which tables and
+  columns a query touches.
+
+No secret appears in the capability map. Commands are redacted like evidence, and for
+environment variables only the names are kept.
 
 ### How the tool recognises a project
 
@@ -202,20 +269,37 @@ It skips these folders without listing them: `.git`, `node_modules`, `.venv`, `v
 
 ### Limits to keep in mind when you advise
 
-- **Three checks only.** The report lists them under "Checks that ran". Injection,
-  free-form tools, bypassed permissions, missing files and the rest are not checked
-  yet, even though the project may have them.
+- **Thirteen checks.** The report lists the ones that ran under "Checks that ran".
+- **Bypass mode in a project's settings file is a warning, not critical.** Claude Code
+  2.1.257 and newer ignore `permissions.defaultMode: bypassPermissions` in project and
+  local settings. In the code of an agent the same mode always takes effect, and
+  there it is critical.
 - **Keys are recognised by their shape.** The tool knows the key formats of Anthropic,
   OpenAI, GitHub, Slack, AWS, Google and Stripe, and private key blocks. A password or
   a key of another service is not found.
-- **Shell permissions are read only from `allowed-tools` in `SKILL.md`.** Permissions
-  in `settings.json` and in agent definitions are not read yet.
+- **The code reader looks inside each tool, not inside the functions the tool
+  calls.** A tool that passes its input to a helper function, which then runs a shell
+  command, is not found. The report says so under "Not checked".
+- **Only two SDKs are understood:** `mcp` (and the older `fastmcp`) for servers, and
+  `claude_agent_sdk` for agents. Only Python. A server written in JavaScript is not
+  detected.
+- **Shell permissions are checked only in `allowed-tools` of `SKILL.md`.** The allow
+  rules of `settings.json` are not read yet.
 - **Hooks are read from `hooks.json`, `settings.json` and `settings.local.json`.** A
   hook written inside a skill's frontmatter is not read yet.
-- **Only Python code is recognised** as an MCP server or agent. A server written in
-  JavaScript is not detected.
-- **No model runs.** Nothing that needs judgment is checked, for example whether a
-  skill does what its description says.
+- **MCP servers are read from `.mcp.json`,** not from a server defined inside
+  `plugin.json`.
+- **The test check knows only SQLite.** A test that connects to another real database
+  is not found.
+- **Missing files are checked only for `${CLAUDE_SKILL_DIR}/...` paths and Markdown
+  links** in `SKILL.md`. A file name written as plain text is not checked.
+- **No model runs.** Nothing that needs judgment is checked. That includes whether a
+  skill does what its description says, and whether private data, content from outside
+  and a way out meet in one agent. The capability map gives you the facts to judge the
+  second one yourself.
 
 When a creator asks "is my project safe?", the honest answer from this report is:
-"these three things were checked, and here is the list of what was not".
+"these things were checked, and here is the list of what was not".
+
+The full list of what the tool does not see, and what is planned for each, is in
+[known-gaps.md](known-gaps.md).

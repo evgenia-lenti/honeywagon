@@ -24,6 +24,8 @@ Two more documents describe only what is built today:
   to run an audit and how to read the report.
 - `docs/developer-guide.md`: for whoever works on the code. How the code is
   organised and how to add a check.
+- `docs/known-gaps.md`: what the tool does not see today, and whether the design
+  already asks for it.
 
 The documents describe the full design. The first version implements part of it.
 If the documents and this file disagree, this file wins for scope and current
@@ -31,7 +33,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 3 of 6: deterministic core, part 3b of three.**
+**Step 3 of 6: deterministic core, part 3c of three.**
 
 Update this line when a step is finished and reviewed.
 
@@ -55,8 +57,9 @@ Step 3 is built in three parts, each with its own plan, branch and review:
   classification, proposed verdict, report.
 - 3b: capability map and the other code-based checks, until every planted
   deterministic mistake in `fixtures/` is found.
-- 3c: mcpscan-cli is first measured on the fixtures and then decided on. Known
-  vulnerabilities of dependencies come from the OSV database. Simple risk map.
+- 3c: data scope of each tool (database, tables, columns, read or write), which the
+  risk map needs. Simple risk map. mcpscan-cli is first measured on the fixtures and
+  then decided on. Known vulnerabilities of dependencies come from the OSV database.
 
 ### The six checkers (step 5), in the order they are added
 
@@ -151,6 +154,8 @@ audit", because nothing was checked. Full definitions are in `docs/tdd.md`.
 - Update the documentation with the code, before the review. `docs/user-guide.md`
   and `docs/developer-guide.md` describe what works today. The four design documents
   change when a decision changes.
+- Write every limit down. When the tool cannot see something, add a row to
+  `docs/known-gaps.md` in the same change, and delete the row when the gap is closed.
 - If something in the design looks wrong or unclear while implementing, stop and
   say so. Do not silently work around it.
 - Before relying on a Claude Code detail (file names, frontmatter fields, hook
