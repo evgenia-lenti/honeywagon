@@ -162,7 +162,12 @@ One entry per tool or capability found:
       "scope": "unrestricted",
       "touches": ["shell", "filesystem_read", "filesystem_write", "network"],
       "boundedness": "unknown",
-      "data_scope": "unknown",
+      "data_scope": {
+        "status": "unknown",
+        "database": null,
+        "database_variable": null,
+        "tables": []
+      },
       "requires_confirmation": false
     }
   ],
@@ -179,8 +184,21 @@ One entry per tool or capability found:
 
 Each entry in the map also has two fields for data access:
 
-- **`data_scope`:** database, tables, columns and actions (read, write, delete) that the tool touches, as far as they are visible from the code. Whatever cannot be determined is marked as `unknown`, not omitted. Until part 3c of the core it is always `unknown`, because the SQL is not parsed yet. Part 3c fills it in for queries written as constant text, before the risk map is built, because the risk map needs to know which tools change or delete data.
-- **`boundedness`:** `fixed` when the tool executes a predefined query or action, `parameterized` when it accepts values into a predefined query, `free_form` when it accepts free SQL, a command or an address composed by the agent.
+- **`data_scope`:** database, tables, columns and actions that the tool touches, as far as they are visible from the code. Whatever cannot be determined is marked as unknown, not omitted. It is built before the risk map, because the risk map needs to know which tools change or delete data.
+- **`boundedness`:** `fixed` when the tool executes a predefined query or action, `parameterized` when it accepts values into a predefined query, `free_form` when it accepts free SQL, a command or an address composed by the agent, or pastes its input into a shell command or into the text of a SQL statement.
+
+The `data_scope` of a tool written in code:
+
+| Field | Content |
+| --- | --- |
+| `status` | `none`: the tool uses no database. `known`: every statement was read. `partial`: some were, the others are put together in code. `any`: a statement, or a piece of one, comes from the tool's input, so the code sets no limit. `unknown`: no statement could be read |
+| `database` | The name written in the code, when the tool opens the database itself |
+| `database_variable` | The environment variable the name is read from, when there is one |
+| `tables` | One entry per table and action: `table`, `action` and `columns` |
+
+`action` takes values from a closed list: `read`, `write`, `delete`, `schema` (the table is created or changed). In `columns`, `*` means every column, and an empty list means that the columns are not known or that the action is on the table as a whole. A tool that is not code, such as `Bash`, has the status `unknown`.
+
+Only SQL written as constant text is read, directly or through a name that is assigned once. The text is parsed with the sqlglot library and never run. The parser is behind one module, so that it can be replaced. The rules are narrow on purpose, so that what is reported is certain: a statement that is not recognised makes the whole text unread, and in a statement over several tables a column is counted only when it names its table.
 
 The checks do not read the map. They read the analysis it is made from, which still holds the raw text of commands and code. The map is the summary that is safe to show: commands in it are redacted, and for environment variables it keeps only the names.
 
@@ -188,7 +206,7 @@ The creator's intent is not asked for in a separate file. The repos already cont
 
 ### RunResult
 
-The result of a run: schema version, tool version, commit, which layers ran, the capability map, the list of findings, the proposed verdict with the rules that triggered it, and the "not checked" list.
+The result of a run: schema version, tool version, commit, which layers ran, the capability map, the risk map, the list of findings, the proposed verdict with the rules that triggered it, and the "not checked" list.
 
 ## Deterministic layer
 
@@ -278,6 +296,14 @@ It is used in three places:
 - **In the cost limit:** when the budget is not enough for everything, the high-risk groups are checked first, and the rest are reported as "not checked".
 
 Automatically generated files (lockfiles, compiled files) go into a separate group and are skipped by the checkers.
+
+**First version, as built.** The deterministic core builds a simpler map, from the capability map alone:
+
+- **Groups.** One group per file that gives capabilities: a `SKILL.md`, a Python file with tools or an agent, a file with hooks, the `.mcp.json`, a settings file. Files that belong to one feature are not joined, and a script that a skill or a hook runs belongs to no group.
+- **Tiers.** `high`, `medium` and `low`. Each fact in the capability map is a reason with its own tier, defined in a data file, and a group gets the highest tier among its reasons. `high`: a tool with free-form input, a tool that runs commands, a tool that changes or deletes data, a tool whose data access could not be read, a hook, any shell command allowed without asking, a permission mode that never asks. `medium`: a tool that uses the network or reads data, a file that starts an MCP server, tools allowed without asking with limits, an agent. `low`: a tool that touches nothing outside the program.
+- **In the report** the tiers are shown as an order of attention ("Look first", "Look next", "Look last"), with the reasons and the names of the tools under each group. They are not called risk levels, because a correct project has groups in the first tier too.
+
+The signals that need judgment are not computed: authentication and authorization, personal data, secrets, untrusted content, complex logic, code that looks generated in one go. They wait for the checkers with a model.
 
 ### Classification and verdict
 
@@ -611,6 +637,8 @@ Inside Claude Code the full run consumes from the user's subscription, not from 
 | mcpscan-cli behind an adapter | Runs locally, MIT licence, covers part of the catalogue | Snyk agent-scan: needs an account and sends data to a third party |
 | Stable ID without a line number | The finding stays the same when lines move, so run-to-run comparison works | ID from file and line |
 | Checks as data | Severity and descriptions change without a code change | Everything inside the code |
+| SQL is read with a parser library (sqlglot), behind one module | It understands joins, subqueries and aliases. MIT licence, no dependencies of its own. It parses the text and never runs it | A small reader of our own: fewer statements understood, more "unknown" in the report |
+| The risk map is shown as an order of attention | A correct project has parts in the first tier too, and "high risk" would read as a judgment | Tiers named as risk levels |
 | Local history as the findings store | No infrastructure, nothing written in the project. It works the same for anyone who uses the tool | Files inside the repo, a separate statistics repo, an external service, anonymous statistics |
 | One repo is one project | No boundary detection is needed, the history is clean | A shared repo with many projects |
 | Plugin as a thin wrapper | The core stays independent of Claude Code, so that a runner for LangGraph or Google ADK can be added later | Check logic inside the skill |
@@ -647,5 +675,5 @@ Decisions about how the tool is used:
 - [x] **Language of the texts for the creator.** If it is Greek, the check definitions need two languages. Decided: English for now. Every such text is in one file per language (`data/text/en.toml`), so a second language is a second file with the same keys.
 - [ ] **Intent from existing documents.** How are the workshop notes located inside a repo, and what happens when they do not exist or are older than the code?
 - [ ] **Limits of the dependency check.** After how long without a release is a dependency considered abandoned, and which registries go into the closed list?
-- [ ] **Data scope from dynamic SQL.** When the query is composed in the code, how far can the parser determine tables and columns before writing `unknown`?
-- [ ] **Grouping by feature in the risk map.** Is it done with code from the folder structure, or does it need a model?
+- [ ] **Data scope from dynamic SQL.** When the query is composed in the code, how far can the parser determine tables and columns before writing `unknown`? In the first version it does not try: only constant text is read, and a tool with composed SQL is reported as "not checked". Open for later: reading the fixed part of a composed statement.
+- [ ] **Grouping by feature in the risk map.** Is it done with code from the folder structure, or does it need a model? In the first version it is code, with one group per file that gives capabilities. Open for later: joining the files of one feature, which needs judgment.

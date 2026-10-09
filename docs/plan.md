@@ -109,7 +109,7 @@ At the end you have four small projects with mistakes you put in on purpose, and
 ### What you do
 
 1. Create four folders in `fixtures/`: a bare skill, a plugin, an MCP server in Python, and an agent with the Claude Agent SDK.
-2. In each folder plant three to five mistakes from the catalogue. E.g. a key inside `SKILL.md`, a bare `Bash` in the allowed tools, input that is passed to a shell, a description that does not agree with the script.
+2. In each folder plant three to five mistakes from the catalogue. A fixture gets one more when a new check needs a place to be exercised. E.g. a key inside `SKILL.md`, a bare `Bash` in the allowed tools, input that is passed to a shell, a description that does not agree with the script.
 3. Next to each fixture write an `expected.json` with the mistakes you put in: file, line, check type, severity.
 4. Also create a fifth fixture with no mistakes at all.
 5. Write an `evaluate` script that compares the tool's output with `expected.json` and produces two numbers per check type: how many mistakes were found and how many findings were false.

@@ -13,7 +13,8 @@ it audits. The creator of a project decides what goes to production.
 ## Status
 
 Under construction: step 3 of 6, the deterministic core. The `audit` command lists
-what a project can do (its tools, MCP servers, hooks and agents), runs thirteen checks
+what a project can do (its tools, MCP servers, hooks and agents, and which tables each
+tool reaches), points to the parts that deserve attention first, runs fourteen checks
 written in code, and gives a report with a proposed verdict. Nothing that needs
 judgment is checked yet, and the report says so under "not checked".
 
@@ -72,7 +73,7 @@ per kind of project:
 .venv\Scripts\python evaluate.py --layer deterministic
 ```
 
-Today it finds all 14 planted mistakes that code can find, with no false finding. The
+Today it finds all 15 planted mistakes that code can find, with no false finding. The
 other 6 need judgment and wait for the checkers that use a model.
 
 ## Documentation

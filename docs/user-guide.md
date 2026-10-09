@@ -23,8 +23,8 @@ Three things are worth knowing before you use it:
 
 ### What it checks today
 
-The tool does two things. It lists what your project can do, and it looks for thirteen
-mistakes. More are being added.
+The tool does three things. It lists what your project can do, it points to the parts
+that deserve attention first, and it looks for fourteen mistakes. More are being added.
 
 Serious mistakes, which the report marks as critical:
 
@@ -35,6 +35,7 @@ Serious mistakes, which the report marks as critical:
 | An agent that never asks before it acts | The agent runs every tool it has, including the ones that delete things, with no person approving | Use the normal permission mode. The report shows the exact change |
 | A hook that downloads a script and runs it | A hook runs by itself. Whoever controls that web address can run commands on every computer that uses your project | Remove the hook, or keep the script inside the project where it can be read |
 | Input of a tool that goes into a shell command | Whoever controls the input can add their own commands | Ask a developer. The command has to be built in a way that keeps the input apart |
+| Input of a tool pasted into the text of a SQL statement | Whoever controls the input can change what the statement does: read other rows and tables, or change and delete data | Ask a developer. The values have to be passed apart from the statement, as parameters |
 | A tool that runs any SQL it is given | The model can read, change or delete anything in the database | Ask a developer. The tool should offer specific questions with values, not free SQL |
 
 Mistakes that make the project fail or misbehave, marked as error:
@@ -86,6 +87,14 @@ What this project can do
     Read  (SKILL.md:4)  any use
     Grep  (SKILL.md:4)  any use
 
+Where to look first
+  A guide for attention, not a judgment. A part comes first because of what it can
+  do, not because something is wrong with it.
+  Look first
+    SKILL.md  (skill)
+      - lets Claude run any command without asking: Bash
+      - lets Claude use tools without asking: Read, Grep
+
 Findings
 
   Critical
@@ -134,6 +143,43 @@ Each part appears only when the project has something of that kind.
 
 A tool that "takes free-form input" does whatever text it is given: any command, any
 SQL or any address. Such a tool is as powerful as the system behind it.
+
+A tool that uses a database has one more line, which starts with `data:`. It says
+which tables the tool reaches and what it does to them:
+
+```
+add_note  (server.py:38)  uses a database; takes values as input
+    data: notes: writes customer_id, note  (database customers.db)
+```
+
+| What the line says | What it means |
+| --- | --- |
+| `notes: reads body, id` | The tool reads these columns of the table `notes` |
+| `notes: writes all columns` | The tool adds or changes rows, and no column is left out |
+| `notes: deletes rows` | The tool removes rows, or the whole table |
+| `notes: creates or changes the table` | The tool changes the shape of the table |
+| `reads, columns not known` | The table is certain, the columns are not |
+| `decided by the input, not limited by the code` | The tool runs SQL that comes from its input, so it can reach whatever the database holds |
+| `some SQL could not be read` | Part of the tool's SQL is put together while it runs. What is listed is true, and there may be more |
+| `tables and columns could not be read` | None of the tool's SQL could be read |
+| `database unknown` | The tool does not open the database itself, so the tool could not tell which one it is |
+
+Ask yourself whether the tool needs every table and column on its line. A tool that
+only shows notes has no reason to write to them.
+
+**Where to look first** orders the parts of your project by how much each can do. It is
+a guide for attention, not a judgment. A part is under "Look first" because of what it
+can do, not because something is wrong with it. A correct project has parts under
+"Look first" too: a hook always is, because it runs by itself.
+
+| Group | When a part is listed there |
+| --- | --- |
+| Look first | A tool takes free-form input, runs commands, or changes or deletes data. A hook. Any shell command is allowed. Something never asks before it acts |
+| Look next | A tool uses the network or reads data. A file starts an MCP server. Tools are allowed without asking, with limits |
+| Look last | A tool touches nothing outside the program |
+
+Under each part are the reasons, with the names of the tools they come from. This
+section never changes the verdict and it adds no finding.
 
 **Findings** are grouped by how serious they are:
 
@@ -209,12 +255,13 @@ the same.
 
 | Field | Content |
 | --- | --- |
-| `schema_version` | Version of this format. Now `1` |
+| `schema_version` | Version of this format. Now `2` |
 | `tool_version` | Version of Honeywagon |
 | `project_kinds` | Any of `plugin`, `skill`, `mcp_server`, `agent` |
 | `layers_ran` | Now `deterministic`, or empty when there was nothing to audit |
 | `checks_ran` | The ids of the checks that ran on this project |
 | `capability_map` | What the project can do: `capabilities`, `mcp_servers`, `hooks`, `agents`, `permission_modes` |
+| `risk_map` | Where to look first: `groups`, each with `name` (the file), `kind`, `tier` and `reasons` |
 | `findings` | The list of findings, most severe first |
 | `verdict` | `key`, `text`, `partial`, and `triggered_by` with the ids of the findings that caused it |
 | `not_checked` | A list of `what` and `reason` |
@@ -238,9 +285,25 @@ Each entry of `capabilities` has `name`, `kind` (`allowed_tool` or `tool`),
 - `touches` uses a closed list: `filesystem_read`, `filesystem_write`, `shell`,
   `network`, `database`, `secrets`, `external_content`.
 - `boundedness` is `fixed` when the tool takes no input, `free_form` when its input
-  becomes the whole command, SQL statement or address, and `parameterized` otherwise.
-- `data_scope` is always `unknown` today. The tool does not read which tables and
-  columns a query touches.
+  becomes the whole command, SQL statement or address, or is pasted into a shell
+  command or into the text of a SQL statement, and `parameterized` otherwise.
+- `data_scope` has `status`, `database`, `database_variable` and `tables`. Each table
+  entry has `table`, `action` (`read`, `write`, `delete` or `schema`) and `columns`.
+  In `columns`, `*` means every column and an empty list means that the columns are
+  not known, or that the action is on the table as a whole.
+
+| `status` | Meaning |
+| --- | --- |
+| `none` | The tool uses no database |
+| `known` | Every SQL statement of the tool was read |
+| `partial` | Some statements were read. The others are put together in code |
+| `any` | A statement, or a piece of one, comes from the tool's input, so the code sets no limit |
+| `unknown` | The tool uses a database and no statement could be read. Also the value for a tool that is not code, such as `Bash` |
+
+Each group of the `risk_map` has a `tier` (`high`, `medium` or `low`) and a list of
+`reasons`. A reason has a `key`, its own `tier`, and `items`: the names of the tools,
+hooks or servers it comes from. The group gets the highest tier among its reasons. The
+report shows the tiers as "Look first", "Look next" and "Look last".
 
 No secret appears in the capability map. Commands are redacted like evidence, and for
 environment variables only the names are kept.
@@ -269,7 +332,26 @@ It skips these folders without listing them: `.git`, `node_modules`, `.venv`, `v
 
 ### Limits to keep in mind when you advise
 
-- **Thirteen checks.** The report lists the ones that ran under "Checks that ran".
+- **Fourteen checks.** The report lists the ones that ran under "Checks that ran".
+- **Tables and columns come only from SQL written as constant text.** SQL that is put
+  together in code, SQL inside a shell command, and queries made through an ORM such
+  as SQLAlchemy or Django are not read. The report names the tools this happened to
+  under "Not checked".
+- **The database is named only when the tool opens it itself, and only for SQLite.**
+  A tool that gets its connection from a helper function shows "database unknown".
+- **In a statement over several tables, columns are listed only when each one names
+  its table** (`c.email`, not `email`). Otherwise the tables are listed with "columns
+  not known".
+- **`execute` on any object is taken as SQL.** A tool that calls a method named
+  `execute` on something that is not a database is listed as using one.
+- **A number is not treated as input, but only on the same line.** `int(limit)` inside
+  the statement is fine. `limit = int(limit)` on a line above, and then `limit` in the
+  statement, is still reported as input pasted into SQL.
+- **"Where to look first" is built from the capability map alone.** It does not know
+  about authentication, personal data, secrets or content written by strangers, and it
+  does not group files that belong to one feature. A script that a skill or a hook
+  runs is not part of any group.
+- **For files, the report says "reads files" or "writes files", not which files.**
 - **Bypass mode in a project's settings file is a warning, not critical.** Claude Code
   2.1.257 and newer ignore `permissions.defaultMode: bypassPermissions` in project and
   local settings. In the code of an agent the same mode always takes effect, and

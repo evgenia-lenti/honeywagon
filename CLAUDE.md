@@ -33,7 +33,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 3 of 6: deterministic core, part 3c of three.**
+**Step 3 of 6: deterministic core, part 3d of four.**
 
 Update this line when a step is finished and reviewed.
 
@@ -51,15 +51,16 @@ Update this line when a step is finished and reviewed.
 
 The tool is already useful after step 4. Steps 5 and 6 make it deeper.
 
-Step 3 is built in three parts, each with its own plan, branch and review:
+Step 3 is built in four parts, each with its own plan, branch and review:
 
 - 3a: the `audit` command, project detection, the finding model, three checks,
   classification, proposed verdict, report.
 - 3b: capability map and the other code-based checks, until every planted
   deterministic mistake in `fixtures/` is found.
 - 3c: data scope of each tool (database, tables, columns, read or write), which the
-  risk map needs. Simple risk map. mcpscan-cli is first measured on the fixtures and
-  then decided on. Known vulnerabilities of dependencies come from the OSV database.
+  risk map needs. Simple risk map. A check for input pasted into SQL.
+- 3d: mcpscan-cli is first measured on the fixtures and then decided on. Known
+  vulnerabilities of dependencies come from the OSV database.
 
 ### The six checkers (step 5), in the order they are added
 

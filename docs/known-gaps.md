@@ -14,7 +14,14 @@ change that finds it.
 | Gap | Example of what is missed | In the design? | What closes it |
 | --- | --- | --- | --- |
 | It looks inside each tool, not inside the functions the tool calls | A tool passes its input to a helper function, and the helper runs it in a shell | Not planned | Follow calls to functions defined in the same project |
-| It does not read which tables and columns a tool touches. `data_scope` is always `unknown` | The report says "uses a database", not "reads name and email from customers" | Yes: requirement F31 in the PRD, `data_scope` in the TDD. Assigned to part 3c, before the risk map, which needs to know which tools change or delete data | Parse the SQL of constant queries. The TDD has an open question about SQL that is built in code |
+| Tables and columns are read only from SQL written as constant text | A tool that builds its statement with an f-string or `+`. The report says "some SQL could not be read" | The TDD has it as an open question | Read the fixed part of a statement that is put together in code |
+| SQL inside a shell command is not read | A tool that runs `sqlite3 file.db 'select * from customers'` shows no table | Not planned | Recognise the database command-line tools in shell commands |
+| Queries made through an ORM are not read | A tool that uses SQLAlchemy or Django models. There is no SQL text to read | Not planned | One reader per ORM |
+| The database is named only when the tool opens it itself, and only for SQLite | A tool that gets its connection from a helper function shows "database unknown" | The first half closes with the helper-function gap above. Other drivers are not planned | Add the connect calls of other drivers to `python_calls.toml`, without showing passwords from connection strings |
+| In a statement over several tables, columns are listed only when each names its table | `select name, o.total from customers c join orders o ...` shows both tables with "columns not known" | Not planned | Needs the columns of each table, which the project may not define |
+| Some SQL statements are not understood | `REPLACE INTO` and `VACUUM`. One such statement makes the whole text unread | Not planned | Follows the SQL parser. Check again when it is upgraded |
+| A method named `execute` on any object is taken as SQL | A tool that calls `execute` on something that is not a database is listed as using one, and can get an `inject-sql` finding | Not planned | Follow the object back to the call that created it |
+| For files, the map says that a tool reads or writes files, not which ones | A tool that reads `data/customers.json` shows "reads files" | Not planned. The PRD asks for the data scope of databases only | Record the paths that are written as constant text |
 | It understands only the `mcp`, `fastmcp` and `claude_agent_sdk` libraries, in Python | An MCP server in JavaScript, or an agent built with LangGraph, has no tools in the map | LangGraph and Google ADK are out of the first version. JavaScript is not planned | One reader per framework, behind the same `Analysis` |
 
 ## Configuration files
@@ -35,7 +42,16 @@ change that finds it.
 | `perm-bypass-in-settings` has unit tests but no fixture. It is listed as the one exception in `tests/test_fixture_evaluation.py` | — | The rule in `CLAUDE.md` asks for a fixture | Plant it in a fixture and remove the exception |
 | `test-real-database` knows only SQLite | A test that connects to PostgreSQL or MySQL on a real host | Not planned | Add the connect calls of other drivers to `checks.toml`, with a fixture |
 | `ref-missing-file` knows two forms: `${CLAUDE_SKILL_DIR}/...` and Markdown links | A skill that says "run publish.sh" in plain text | Left out on purpose: a file name in a sentence may be a file of the user | Decide after seeing real skills |
+| `inject-sql` treats a value as input even after it was turned into a number on a line above | `limit = int(limit)` and then `limit` in an f-string is reported. `int(limit)` inside the statement is not | Not planned | Follow the order of the lines inside a tool |
 | A suggested change exists for two cases only | Any-shell permission, a server without a version | Yes: the TDD wants one for every simple fix | Each needs a fact the code does not have: which commands the skill needs, which version is wanted |
+
+## The risk map
+
+| Gap | Example of what is missed | In the design? | What closes it |
+| --- | --- | --- | --- |
+| It knows only what the capability map knows | Authentication, personal data, secrets, content written by strangers, complex logic | Yes: the TDD lists them as signals of the risk map | The checkers with a model, in step 5 |
+| One group per file. Files of one feature are not joined | A skill and the MCP server it uses are two groups | The TDD has it as an open question | Needs judgment, so a model |
+| A script that a skill or a hook runs belongs to no group | A hook that runs `scripts/check.py`: the hook is listed, the script is not | Not planned | Follow the command of a hook or the steps of a skill to the file |
 
 ## Waiting for a later step
 
@@ -43,10 +59,8 @@ These are decided and have a place. They are listed so that the list is complete
 
 | What | When |
 | --- | --- |
-| Data scope of each tool: database, tables, columns, read or write | Part 3c |
-| A fixture with a vulnerable dependency, and the lookup in OSV | Part 3c |
-| Whether and how mcpscan-cli is integrated, after measuring it on the fixtures | Part 3c |
-| Risk map | Part 3c |
+| A fixture with a vulnerable dependency, and the lookup in OSV | Part 3d |
+| Whether and how mcpscan-cli is integrated, after measuring it on the fixtures | Part 3d |
 | Everything that needs judgment, including the dangerous combination of capabilities | Step 5 |
 | Fixtures that attack the tool itself | Step 5 |
 | Real fixtures, with their creator's permission | When one is available |

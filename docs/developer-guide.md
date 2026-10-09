@@ -23,6 +23,10 @@ Run all of these before a review:
 
 `ruff format .` without `--check` rewrites the files in the project's style.
 
+The package has two runtime dependencies: `pyyaml`, for the frontmatter of Markdown
+files, and `sqlglot`, to read SQL. `sqlglot` is held to one major version in
+`pyproject.toml`, because it has renamed classes between major versions.
+
 ## Layout
 
 ```
@@ -33,12 +37,15 @@ src/honeywagon/
   files.py            reads the project's text files, lists what it did not read
   detect.py           decides the kinds of project
   frontmatter.py      reads the YAML block at the top of a Markdown file
+  triage.py           the risk map: which parts to look at first
   classify.py         confidence and proposed verdict
   datafiles.py        loads the files in data/
   capability/
     __init__.py       Analysis (what the checks read) and the capability map
     config_files.py   allowed tools, MCP servers and hooks from configuration files
     python_code.py    tools, what they touch, and agent options, from Python code
+    sql.py            tables, actions and columns of one SQL text (uses sqlglot)
+    data_scope.py     the data a tool reaches, from the SQL it runs
   checks/
     registry.py       joins each check's definition with its function
     secrets.py        secret-in-file
@@ -46,7 +53,8 @@ src/honeywagon/
     agents.py         perm-bypass-permissions, perm-bypass-in-settings,
                       agent-no-turn-limit
     hooks.py          hook-remote-code
-    tools.py          inject-shell, tool-free-form-sql, mcp-fetch-any-url
+    tools.py          inject-shell, inject-sql, tool-free-form-sql,
+                      mcp-fetch-any-url
     mcp_servers.py    mcp-unpinned-server
     references.py     ref-missing-file
     portability.py    port-absolute-path
@@ -61,6 +69,7 @@ src/honeywagon/
     secret_patterns.toml  the shapes of keys and tokens
     builtin_tools.toml    what each built-in Claude Code tool touches
     python_calls.toml     the Python calls the code reader recognises
+    risk.toml             the tier of each reason in the risk map
     text/en.toml          every text the creator reads
 tests/                unit tests, and the evaluation on the fixtures
 fixtures/             fake projects with planted mistakes, see fixtures/README.md
@@ -81,6 +90,7 @@ evaluate.py           compares the tool's findings with the planted mistakes
    Python code once, into an `Analysis`. `capability.capability_map` turns it into
    the `CapabilityMap` of the result. A file that cannot be parsed becomes a
    `NotChecked` entry here, so the checks do not deal with broken files.
+   `triage.risk_map` then builds the `RiskMap` from the capability map alone.
 4. **Check.** Every check whose `kinds` include a detected kind runs on the
    `Analysis` and yields `Hit` objects: file, line, the line's text and, rarely, a
    suggested change.
@@ -91,7 +101,8 @@ evaluate.py           compares the tool's findings with the planted mistakes
 6. **Classify.** `classify.confidence_of` sets the confidence and
    `classify.propose_verdict` applies the fixed rules.
 7. **Report what was not covered.** The pipeline always adds the entries in
-   `NOT_COVERED`: the layers and checks that do not exist yet.
+   `NOT_COVERED`: the layers and checks that do not exist yet. It also names the tools
+   whose SQL could not be read.
 
 `cli.main` then prints `report.render_text` or `report.render_json` and returns the
 exit code.
@@ -131,10 +142,63 @@ tool's input.
 | `part` | The input is a piece of it | `urlopen(f"https://api.example.com/{item}")` |
 | `whole` | The input is all of it | `conn.execute(sql)` where `sql` is the tool's argument |
 
-The code reader follows an input through local names (`query = sql`), and through the
-single dict that an Agent SDK tool receives (`args["sql"]`). It does not follow it
-into another function. The calls it recognises are listed in
-`data/python_calls.toml`.
+The code reader follows an input through local names (`query = sql`, `query += ...`),
+and through the single dict that an Agent SDK tool receives (`args["sql"]`). It does
+not follow it into another function. A value inside `int(...)` or `float(...)` does
+not count as input. The calls it recognises are listed in `data/python_calls.toml`.
+
+A database effect has two more facts:
+
+- `statement` is the SQL when it is written as constant text, directly or through a
+  name that is assigned once (`QUERY = "..."` at the top of the file, or in the tool).
+- `built_text` says that the SQL is put together in code: an f-string, `+`, `%` or
+  `.format`. `effect.input_in_text` is true when input of the tool is pasted into a
+  shell command or into such a statement. `inject-sql` and `inject-shell` read it.
+
+A tool also has `databases`: the target of each `sqlite3.connect(...)` call inside it,
+as a name written in the code or as the environment variable it is read from.
+
+## The data scope
+
+`capability/data_scope.py` turns the database effects of one tool into the
+`DataScope` of its entry in the map:
+
+1. A statement that is the tool's input, or has input pasted into it, makes the
+   status `any`.
+2. Every other statement with a `statement` text goes to `sql.read_sql`, which returns
+   one `TableAccess` per table and action, or `None` when the text is not understood.
+3. The status is `known` when every statement was read, `partial` when some were,
+   `unknown` when none was, and `none` when the tool has no database call at all.
+
+`capability/sql.py` is the only module that imports `sqlglot`. It parses the text and
+never runs it. Its rules are deliberately narrow, so that what it reports is certain:
+
+- The dialect is not known, so it tries the default one, then SQLite, MySQL and
+  PostgreSQL. The placeholders of the Python drivers (`%s`, `%(name)s`, `$1`) are
+  replaced by `?` first.
+- A statement it does not recognise makes the whole text unread. It does not guess.
+- With one table in a statement, every column belongs to that table. With several, a
+  column is counted only when it names its table or its alias, and a single column
+  that does not makes the columns of every table unknown.
+- A name defined by `WITH` is not a table. A name given with `AS` is not a column.
+
+Table, column and database names pass through `safe_evidence` before they enter the
+map, like every other text taken from the audited project.
+
+## The risk map
+
+`triage.risk_map(capability_map)` returns one `RiskGroup` per file that gives
+capabilities. It reads only the capability map, so it runs before the checks and knows
+nothing about findings. It produces no finding and it does not change the verdict.
+
+Each fact in the map becomes a reason on the file it is declared in: a tool with
+free-form input, a hook, a server that is started, and so on. `data/risk.toml` gives
+each reason a tier. A group gets the highest tier among its reasons, and its `kind` is
+the first of `triage.KINDS` that applies to the file.
+
+To add a reason: add its key and tier to `risk.toml`, its text to `[risk_reasons]` in
+`text/en.toml`, and the condition to `triage.py`. A test checks that the two files
+have the same keys.
 
 ## Rules the code must keep
 
@@ -227,8 +291,8 @@ Follow these steps in order. The example adds a check with the id `example-check
 
 Severity, fix effort, the kinds a check applies to, and its options are in
 `checks.toml`. The patterns for keys are in `secret_patterns.toml`. The Python calls
-that count as shell, network or database are in `python_calls.toml`. The wording is in
-`text/en.toml`. Changing these needs no Python, but run the tests and the evaluation
+that count as shell, network or database are in `python_calls.toml`. The tier of each
+reason in the risk map is in `risk.toml`. The wording is in `text/en.toml`. Changing these needs no Python, but run the tests and the evaluation
 afterwards: a looser pattern can produce false findings on the clean fixture.
 
 ## The evaluation

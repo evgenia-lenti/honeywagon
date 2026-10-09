@@ -11,7 +11,7 @@ fake and was never valid.
 | --- | --- | --- |
 | `skill-release-notes` | skill | 5 |
 | `plugin-team-helper` | plugin | 5 |
-| `mcp-customer-db` | MCP server | 5 |
+| `mcp-customer-db` | MCP server | 6 |
 | `agent-support-triage` | agent | 5 |
 | `clean-plugin` | plugin | 0 |
 
