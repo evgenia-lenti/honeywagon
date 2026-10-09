@@ -1,0 +1,32 @@
+# One table per check. The texts shown to the creator are in text/<language>.toml.
+#
+# severity    critical, error, warning, suggestion or nitpick
+# fix_effort  simple or complex
+# kinds       the kinds of project the check applies to
+# Any other key is an option of that check.
+
+[secret-in-file]
+severity = "critical"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+
+[perm-broad-bash]
+severity = "critical"
+fix_effort = "simple"
+kinds = ["plugin", "skill"]
+# Entries of allowed-tools that allow any shell command.
+broad_tools = ["Bash", "Bash(*)", "*"]
+
+[hook-remote-code]
+severity = "critical"
+fix_effort = "simple"
+kinds = ["plugin", "skill", "mcp_server", "agent"]
+# Files that can define hooks.
+files = ["hooks.json", "settings.json", "settings.local.json"]
+# Commands that download something and run it.
+patterns = [
+  '(?i)\b(curl|wget)\b[^|;&]*\|\s*(sudo\s+)?(ba|z|da|k)?sh\b',
+  '(?i)\b(ba|z)?sh\s+-c\s+.{0,3}\$\(\s*(curl|wget)\b',
+  '(?i)\b(ba|z)?sh\s+<\(\s*(curl|wget)\b',
+  '(?i)\b(iwr|irm|invoke-webrequest|invoke-restmethod)\b.*\|\s*(iex|invoke-expression)\b',
+]

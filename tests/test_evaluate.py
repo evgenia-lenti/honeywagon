@@ -157,17 +157,28 @@ def test_findings_are_read_from_a_list_or_from_an_object(
     ]
 
 
-def test_run_without_tool_output_misses_every_planted_mistake(
-    capsys: pytest.CaptureFixture[str],
+def test_run_on_an_empty_results_folder_misses_every_planted_mistake(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     fixtures = evaluate.load_fixtures(evaluate.FIXTURES_DIR)
     planted_total = sum(len(item.expected) for item in fixtures)
 
-    exit_code = evaluate.main([])
+    exit_code = evaluate.main(["--results", str(tmp_path)])
 
     output = capsys.readouterr().out
     missed_lines = output.split("Missed\n")[1].split("\n\n")[0].splitlines()
     assert exit_code == 0
-    assert "every planted mistake counts as missed" in output
+    assert "No results file for:" in output
     assert len(missed_lines) == planted_total
+    assert output.rstrip().endswith("False findings\n  (none)")
+
+
+def test_run_without_results_folder_audits_the_fixtures_with_the_core(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = evaluate.main(["--layer", "deterministic"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "the deterministic core, run now" in output
     assert output.rstrip().endswith("False findings\n  (none)")

@@ -4,9 +4,10 @@ Usage:
     python evaluate.py
     python evaluate.py --results <folder> [--layer deterministic|model]
 
+Without --results it runs the deterministic core on every fixture.
+
 <folder> holds one <fixture>.json per fixture: a JSON list of findings, or an
 object with a "findings" list. Each finding needs "check_id", "file" and "line".
-Without --results no fixture has findings, so every planted mistake is missed.
 """
 
 import argparse
@@ -15,6 +16,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from honeywagon.pipeline import run_audit
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 LINE_TOLERANCE = 3
@@ -90,6 +93,14 @@ def load_findings(results_file: Path) -> list[Finding]:
     return [
         Finding(entry["check_id"], normalise_path(entry["file"]), int(entry["line"]))
         for entry in entries
+    ]
+
+
+def run_core(fixture: Fixture) -> list[Finding]:
+    """Audit the fixture's project with the deterministic core."""
+    return [
+        Finding(finding.check_id, finding.file, finding.line)
+        for finding in run_audit(fixture.project_dir).findings
     ]
 
 
@@ -178,7 +189,7 @@ def format_report(
 ) -> str:
     lines = [f"Fixtures: {len(results)}    Layer: {layer or 'all'}"]
     if results_dir is None:
-        lines.append("No tool output given: every planted mistake counts as missed.")
+        lines.append("Tool output: the deterministic core, run now on every fixture")
     else:
         lines.append(f"Tool output: {results_dir}")
     if fixtures_without_results:
@@ -225,12 +236,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     fixtures_without_results = []
     for fixture in load_fixtures(FIXTURES_DIR):
         findings: list[Finding] = []
-        if args.results is not None:
-            results_file = args.results / f"{fixture.name}.json"
-            if results_file.is_file():
-                findings = load_findings(results_file)
-            else:
-                fixtures_without_results.append(fixture.name)
+        if args.results is None:
+            findings = run_core(fixture)
+        elif (results_file := args.results / f"{fixture.name}.json").is_file():
+            findings = load_findings(results_file)
+        else:
+            fixtures_without_results.append(fixture.name)
         results.append(evaluate_fixture(fixture, findings, args.layer))
 
     print(format_report(results, args.layer, args.results, fixtures_without_results))

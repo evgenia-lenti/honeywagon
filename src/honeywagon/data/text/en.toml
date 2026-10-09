@@ -1,0 +1,75 @@
+# Every text that the creator of a project reads, in English.
+# A second language is a second file with the same keys.
+
+[checks.secret-in-file]
+title = "A key or token is written in a file"
+consequence = "Anyone who can read this file can use the key as if they were you. That includes everyone with access to the repository and its history."
+
+[checks.perm-broad-bash]
+title = "The skill allows any shell command"
+consequence = "Whoever uses the skill lets Claude run any command on their computer without being asked first."
+
+[checks.hook-remote-code]
+title = "A hook downloads a script and runs it"
+consequence = "The hook runs by itself, with no question asked. Whoever controls that address can run any command on the computer of everyone who uses this project."
+
+[verdict]
+not_recommended = "Not recommended for use"
+fix_before_use = "Fix before use"
+no_reason_found = "No reason found not to use"
+nothing_to_audit = "Nothing to audit"
+
+[kinds]
+plugin = "plugin"
+skill = "skill"
+mcp_server = "MCP server"
+agent = "agent"
+
+[severity]
+critical = "Critical"
+error = "Error"
+warning = "Warning"
+suggestion = "Suggestion"
+nitpick = "Nitpick"
+
+[report]
+title = "Honeywagon audit"
+advisory = "This report is advisory. It does not block or approve anything. The creator of the project decides what goes to production."
+project_kinds = "Found in this project"
+layers_ran = "Layers that ran"
+checks_ran = "Checks that ran"
+proposed_verdict = "Proposed verdict"
+partial = "Partial: only the deterministic layer ran, so the verdict covers only what code can check."
+because_of = "Because of"
+findings = "Findings"
+no_findings = "No findings."
+confidence = "confidence"
+fix = "fix"
+not_checked = "Not checked"
+more_files = "and {count} more"
+none = "none"
+
+[not_checked]
+no_agentic_artifact = "No skill, plugin, MCP server or agent was found here, so nothing was checked."
+model_checkers = "Needs the checkers that use a model, which are not built yet."
+dynamic_tester = "Needs the dynamic tester, which is not built yet."
+external_scanner = "The external scanner is not connected yet."
+dependency_vulnerabilities = "Known vulnerabilities of dependencies are not checked yet."
+other_deterministic_checks = "Only the checks listed above exist so far. The other code-based checks are not built yet."
+file_type = "File type that the tool does not analyse."
+too_large = "File larger than 1 MB."
+not_text = "Not a text file."
+symlink_outside = "Symbolic link that points outside the project."
+symlinked_folder = "Symbolic link to a folder. The tool does not follow it."
+unreadable = "The file could not be read."
+invalid_frontmatter = "The YAML at the top of the file could not be parsed."
+invalid_json = "The JSON in the file could not be parsed."
+invalid_python = "The Python code could not be parsed."
+
+[not_checked_items]
+model_checkers = "Intent versus implementation, data flow, reliability, practices, performance"
+dynamic_tester = "Behaviour of MCP servers and scripts when they run"
+external_scanner = "mcpscan-cli"
+dependency_vulnerabilities = "Dependencies"
+other_deterministic_checks = "Other deterministic checks"
+no_agentic_artifact = "The whole project"

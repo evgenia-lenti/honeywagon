@@ -11,10 +11,16 @@ requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Evgenia Lenti" }]
-dependencies = []
+dependencies = ["pyyaml>=6"]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff", "mypy"]
+dev = ["pytest", "ruff", "mypy", "types-PyYAML"]
+
+[project.scripts]
+audit = "honeywagon.cli:main"
+
+[tool.setuptools.package-data]
+honeywagon = ["data/*.toml", "data/text/*.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
