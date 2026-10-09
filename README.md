@@ -12,8 +12,9 @@ it audits. The creator of a project decides what goes to production.
 
 ## Status
 
-Under construction: step 1 of 6. The repository has the project skeleton and the
-design documents. There is nothing to run against a project yet.
+Under construction: step 2 of 6 is done. The repository has the design documents, the
+fixtures with planted mistakes and the script that measures the tool against them.
+There is nothing to run against a project yet.
 
 ## Requirements
 
@@ -47,6 +48,20 @@ Windows (PowerShell):
 ```
 
 On macOS and Linux, use `.venv/bin/python` in place of `.venv\Scripts\python`.
+
+## Fixtures and evaluation
+
+[fixtures/](fixtures/) holds small fake projects with planted mistakes, and one
+without any. The code there is wrong on purpose and every key in it is fake.
+
+`evaluate.py` compares the tool's findings with the planted mistakes, per check and
+per kind of project:
+
+```powershell
+.venv\Scripts\python evaluate.py
+```
+
+The tool has no checks yet, so every planted mistake is reported as missed.
 
 ## Design
 

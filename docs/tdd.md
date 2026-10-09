@@ -546,13 +546,17 @@ A creator's runs on their computer do not reach the developers, and they do not 
 
 Each folder in `fixtures/` has an `expected.json` with the planted mistakes: `check_id`, file, line, severity. There are five kinds of fixtures: skill, plugin, MCP server, agent, and a clean one. In addition, security fixtures that attack the checker itself.
 
+The audited project of a fixture is in its `project/` subfolder, and `expected.json` sits next to it, so that the tool never reads the list of mistakes as part of the project. Each planted mistake also has a `layer` (`deterministic` or `model`), which says whether code or a checker is expected to find it, and a `contains` text that must be on the given line, so that a test notices when the lines of a fixture move.
+
 Part of the fixtures is never used as an example in a prompt, so that the measurement is made on something the agents have not seen.
 
 Alongside the synthetic ones, real skills are also used as fixtures, with their creator's permission and with their known findings recorded. A real skill that has only read permissions serves as a second clean fixture.
 
 ### `evaluate.py`
 
-It matches findings to expected ones based on the `check_id` and the file, with a tolerance of a few lines. It produces, per `check_id` and per kind of project:
+It reads the tool's findings from a folder with one `<fixture>.json` per fixture. Without that folder no fixture has findings, so every planted mistake counts as missed. With `--layer` it counts only the planted mistakes of one layer.
+
+It matches findings to expected ones based on the `check_id` and the file, with a tolerance of three lines. Each finding matches at most one planted mistake. It produces, per `check_id`, per kind of project and per fixture:
 
 - **Found:** how many of the planted mistakes were detected.
 - **False:** how many findings do not correspond to a planted mistake.

@@ -24,7 +24,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 2 of 6: fixtures with planted mistakes, `expected.json`, a clean fixture, `evaluate.py`.**
+**Step 3 of 6: deterministic core.**
 
 Update this line when a step is finished and reviewed.
 
@@ -163,7 +163,16 @@ Lint, format check and type check:
 .venv\Scripts\python -m mypy
 ```
 
-`evaluate.py` is added in step 2.
+Compare the tool's findings with the planted mistakes in `fixtures/`:
+
+```powershell
+.venv\Scripts\python evaluate.py
+.venv\Scripts\python evaluate.py --results <folder> --layer deterministic
+```
+
+Without `--results` every planted mistake counts as missed. `<folder>` holds one
+`<fixture>.json` of findings per fixture. `fixtures/README.md` describes the fixtures
+and the format of `expected.json`.
 
 ## Conventions
 
