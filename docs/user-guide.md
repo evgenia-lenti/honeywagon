@@ -14,6 +14,9 @@ what it found that could hurt you or the people who use your project.
 Three things are worth knowing before you use it:
 
 - **It only reads.** It never changes your files and it never sends them anywhere.
+  There is one thing it can ask the outside world, and only when you tell it to:
+  whether the packages your project depends on have known security problems. For
+  that it sends the names and versions of those packages, and nothing else.
 - **It only advises.** It does not block anything and it does not approve anything.
   You decide what you do with the report, and you are responsible for what you put
   into use.
@@ -24,7 +27,7 @@ Three things are worth knowing before you use it:
 ### What it checks today
 
 The tool does three things. It lists what your project can do, it points to the parts
-that deserve attention first, and it looks for fourteen mistakes. More are being added.
+that deserve attention first, and it looks for fifteen mistakes. More are being added.
 
 Serious mistakes, which the report marks as critical:
 
@@ -45,6 +48,7 @@ Mistakes that make the project fail or misbehave, marked as error:
 | A tool that calls any address it is given | It can be pointed at internal systems that should not be reached | Ask a developer to limit the tool to the addresses it needs |
 | A skill that points to a file that does not exist | The step fails, or Claude makes something up | Add the file, or remove the step |
 | A test that opens the real database | Running the tests reads or changes real data | Ask a developer to make the tests use a temporary database |
+| A dependency, or a downloaded MCP server, in a version with a known security problem | The problem is published, so anyone can look it up and try it against your project | Move to a version that fixes it. The report lists, for each problem, the versions that fix it. This is found only when the audit runs with the lookup switched on, and it is marked critical when the public database rates the problem as critical |
 
 Unnecessary risks, marked as warning:
 
@@ -206,6 +210,21 @@ become. The tool writes it only when it is certain of the exact text.
 
 **Not checked** lists what the tool did not look at, and why. Read it every time.
 
+One line there is about your dependencies, the packages your project needs:
+
+```
+- requests 2.31.0, mcp 2.3.0: Not looked up. Run again with --lookup to ask the OSV
+  database for known security problems. That sends these names and versions, and
+  nothing else.
+```
+
+It names exactly what would be sent. If every name on it is a public package, the
+lookup is safe to run. If one of them is a package that only your company has, its
+name would become known to the database, so ask before you run it.
+
+When the lookup did run, a line near the top of the report says what was sent:
+`Sent to the OSV database: PyPI requests 2.31.0`.
+
 ### What to do with a finding
 
 1. Open the file at the line the report gives.
@@ -244,12 +263,46 @@ the same.
 | --- | --- |
 | `--format text` | The report for a person. This is the default |
 | `--format json` | The whole result, for a script |
+| `--lookup` | Also ask the OSV database about known security problems of the dependencies. Off unless you give it |
 
 | Exit code | Meaning |
 | --- | --- |
 | `0` | No critical finding |
 | `1` | At least one critical finding. A signal for scripts, not a block |
 | `2` | Usage error, for example a folder that does not exist |
+
+### Looking up dependencies
+
+The tool reads which packages the project depends on from three places:
+
+| Where | What it reads |
+| --- | --- |
+| `requirements.txt` and `requirements-*.txt` | Each line that names a package |
+| `pyproject.toml` | `dependencies` and `optional-dependencies` of the `[project]` table |
+| `.mcp.json` | A package that a server downloads at start, with `npx`, `bunx`, `pnpm`, `uvx` or `pipx` |
+
+Only a dependency with one exact version can be looked up: `requests==2.31.0`,
+`mcp-remote@0.1.15`. A dependency such as `requests>=2` or `some-server@latest` is
+listed under "Not checked", by name.
+
+Without `--lookup` nothing is sent, and the report lists the names and versions that a
+lookup would send. With `--lookup` the tool asks [OSV](https://osv.dev), a public
+database of known vulnerabilities, one question per package. Each question holds the
+registry (PyPI or npm), the package name and the version. No code, no file name and
+nothing else about the project is sent.
+
+**Before you run `--lookup` on someone's project, read the list.** The name of a
+package that exists only inside a company tells the database that such a package
+exists. There is no way yet to leave one package out and look up the rest.
+
+A package with a known problem becomes one finding, on the line that declares it. The
+finding lists the id of each problem and, in brackets, the versions that fix it, as the
+database gives them. A `-` in the brackets means that the database lists no fixed
+version. The tool does not suggest a version to move to: look the ids up at
+`osv.dev` and choose one that fixes all of them.
+
+If the database does not answer, the audit still finishes, and the package is listed
+under "Not checked".
 
 ### The JSON result
 
@@ -260,6 +313,7 @@ the same.
 | `project_kinds` | Any of `plugin`, `skill`, `mcp_server`, `agent` |
 | `layers_ran` | Now `deterministic`, or empty when there was nothing to audit |
 | `checks_ran` | The ids of the checks that ran on this project |
+| `looked_up` | The packages that were sent to the OSV database: registry, name and version. Empty without `--lookup` |
 | `capability_map` | What the project can do: `capabilities`, `mcp_servers`, `hooks`, `agents`, `permission_modes` |
 | `risk_map` | Where to look first: `groups`, each with `name` (the file), `kind`, `tier` and `reasons` |
 | `findings` | The list of findings, most severe first |
@@ -332,7 +386,14 @@ It skips these folders without listing them: `.git`, `node_modules`, `.venv`, `v
 
 ### Limits to keep in mind when you advise
 
-- **Fourteen checks.** The report lists the ones that ran under "Checks that ran".
+- **Fifteen checks.** The report lists the ones that ran under "Checks that ran".
+- **Dependencies are looked up only with `--lookup`,** and only the ones the project
+  names itself, with one exact version. The packages that those packages bring with
+  them are not looked up, and lock files such as `uv.lock` are not read. Neither is
+  `package.json`.
+- **A known problem in a dependency does not mean the project can be attacked through
+  it.** The tool does not know whether the code uses the part of the package that has
+  the problem. The severity follows the rating of the database, not the project.
 - **Tables and columns come only from SQL written as constant text.** SQL that is put
   together in code, SQL inside a shell command, and queries made through an ORM such
   as SQLAlchemy or Django are not read. The report names the tools this happened to

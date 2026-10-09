@@ -33,7 +33,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 3 of 6: deterministic core, part 3d of four.**
+**Step 3 of 6: deterministic core, part 3e of five.**
 
 Update this line when a step is finished and reviewed.
 
@@ -43,15 +43,15 @@ Update this line when a step is finished and reviewed.
 2. Three or four fixtures with planted mistakes, an `expected.json` for each, a
    clean fixture, and `evaluate.py`.
 3. Deterministic core: project detection, capability map, code-based checks,
-   mcpscan-cli adapter, known-vulnerability check for dependencies, simple risk
-   map, classification, proposed verdict.
+   known-vulnerability check for dependencies, simple risk map, classification,
+   proposed verdict.
 4. Claude Code plugin with `/audit`, reporting in the conversation.
 5. `/audit full`: six checker subagents and a verifier subagent, with plugin hooks.
 6. Dynamic tester for MCP servers and scripts, in Docker, without a model.
 
 The tool is already useful after step 4. Steps 5 and 6 make it deeper.
 
-Step 3 is built in four parts, each with its own plan, branch and review:
+Step 3 is built in five parts, each with its own plan, branch and review:
 
 - 3a: the `audit` command, project detection, the finding model, three checks,
   classification, proposed verdict, report.
@@ -59,8 +59,12 @@ Step 3 is built in four parts, each with its own plan, branch and review:
   deterministic mistake in `fixtures/` is found.
 - 3c: data scope of each tool (database, tables, columns, read or write), which the
   risk map needs. Simple risk map. A check for input pasted into SQL.
-- 3d: mcpscan-cli is first measured on the fixtures and then decided on. Known
-  vulnerabilities of dependencies come from the OSV database.
+- 3d: mcpscan-cli was measured on the fixtures and left out, see `docs/design.md`.
+  Known vulnerabilities of dependencies come from the OSV database, only when the
+  audit is run with `--lookup`.
+- 3e: four checks that came out of that measurement: a file path built from the
+  input of a tool, unsafe deserialisation, switched-off TLS verification, a remote
+  MCP server without authentication.
 
 ### The six checkers (step 5), in the order they are added
 
@@ -108,6 +112,10 @@ Do not build these, and do not add scaffolding for them, unless asked:
 - **Read-only.** The tool and its checkers only read the audited project. Checkers
   get `Read`, `Grep` and `Glob`. No writes, no shell, no network.
 - **Nothing is written into the audited project.**
+- **Nothing leaves the machine unless the person asks.** The core uses the network
+  for one thing, the lookup of dependencies in the OSV database. It runs only with
+  `--lookup` and sends package names and versions, nothing else. Tests never use
+  the network.
 - **Every finding has evidence:** file, line and the exact text. A finding that
   cannot be verified is not reported.
 - **Secrets never appear in any output.** Only their location is recorded.
@@ -194,7 +202,10 @@ Audit a project folder with the deterministic layer:
 ```powershell
 .venv\Scripts\audit <folder>
 .venv\Scripts\audit <folder> --format json
+.venv\Scripts\audit <folder> --lookup
 ```
+
+`--lookup` asks the OSV database about the dependencies. Without it nothing is sent.
 
 Compare the tool's findings with the planted mistakes in `fixtures/`:
 
@@ -203,7 +214,9 @@ Compare the tool's findings with the planted mistakes in `fixtures/`:
 .venv\Scripts\python evaluate.py --results <folder>
 ```
 
-Without `--results` it runs the deterministic core on every fixture. `<folder>` holds
+Without `--results` it runs the deterministic core on every fixture, with the
+recorded answers of the OSV database in `fixtures/advisories.json`. `--online` asks
+the database itself and `--record` rewrites that file. `<folder>` holds
 one `<fixture>.json` of findings per fixture. `fixtures/README.md` describes the fixtures
 and the format of `expected.json`.
 

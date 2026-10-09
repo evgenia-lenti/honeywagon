@@ -13,7 +13,7 @@ The tool shows someone who does not read code what they have actually built and 
 
 ## What already exists
 
-Mature scanners exist for MCP servers and skills, and it is worth integrating them as a first layer instead of rewriting them. The research was quick (one search per topic), so the list is not exhaustive.
+Mature scanners exist for MCP servers and skills, and the starting idea was to integrate one as a first layer instead of rewriting it. The measurement under "Measurement and decision" changed that for the first version. The research was quick (one search per topic), so the list is not exhaustive.
 
 | Tool | Target | What it does | Licence | Local or cloud |
 | --- | --- | --- | --- | --- |
@@ -42,6 +42,33 @@ mcpscan-cli is the only scanner considered for integration. The other tools in t
 Two reservations about mcpscan-cli: it has a single maintainer and is at beta stage, and as a static check with heuristic rules it does not see prompt injection through content. For this reason the version is pinned and the scanner goes behind an adapter, so that it can be replaced without changes to the rest of the tool.
 
 Because of these reservations, the integration is decided on measurements and not in advance. mcpscan-cli is first run on the fixtures, to see which planted mistakes it finds and how many false findings it produces on the clean fixture. Whether it becomes a pinned dependency, an optional one, or is left out is decided on those numbers.
+
+### Measurement and decision
+
+mcpscan-cli 0.20.0 was run on the five fixtures in October 2026, when the core had fourteen checks of its own and the fixtures had 21 planted mistakes.
+
+| Question | Result |
+| --- | --- |
+| Planted mistakes it finds | 3 of 21: the Slack token, the input that goes into a shell command, the hook that downloads a script |
+| Of those, not already found by our own checks | 0 |
+| Planted mistakes our own checks find | 15 of 21. The other 6 need judgment |
+| Findings on the clean fixture | 2. Both come from one rule, "a tool declares no risk annotations", which fired on every tool of every fixture |
+| Missed, although it has a rule for that group | The keys in `SKILL.md` and `.mcp.json`, any shell command allowed in `SKILL.md` (it does not read `SKILL.md`), the bypass mode in the code of an agent, the tool that calls any address |
+| Missed, because it has no rule | Input pasted into SQL, a tool that runs any SQL, a server without a fixed version, a missing file, a path into a home folder, a test on the real database, an agent with no turn limit |
+
+Two cautions about these numbers. The fixtures were built around our own checks, so the comparison favours them. And the keys in the fixtures are fake and do not have the length of real ones, which may be why two of the three were missed.
+
+Because of the first caution, the rules that our checks do not have were tried on a small separate sample. Five of them work and find real problems: a file path built from input, unsafe deserialisation (`pickle`), switched-off TLS verification, a remote MCP server with no authentication, and text in a tool description that reads like an instruction to the model.
+
+**Decision: mcpscan-cli is not integrated, and no adapter is built.**
+
+- On the fixtures it adds nothing to our own checks, and its noisiest rule would have to be switched off.
+- It has one maintainer and two published releases.
+- About half of its 22 rules are outside the scope of this tool: GitHub workflows and click handlers in web pages.
+- Its texts are written for developers. Ours are written for creators who do not program.
+- Each of the five useful rules is a small check on the analysis that the core already builds. They are listed in `known-gaps.md` as checks to write: four in part 3e of the core, and the fifth, which needs judgment, with the checkers of step 5.
+
+The first reason in the proposal above, that everything runs locally, still holds for the tool as a whole: it has no scanner that could send anything anywhere.
 
 For general vibe coded code there are also [hallucinot](https://github.com/jayj221/hallucinot) (deleted tests and assertions per commit) and [vibescore](https://socket.dev/npm/package/@marco-trotta1/vibescore) (stubs and placeholders by keyword).
 
@@ -285,7 +312,7 @@ The proposal is to start from the deterministic layer, because it gives the capa
 
 1. Collecting 3 to 5 real projects of colleagues as test fixtures.
 2. A parser for the configuration files and generation of the capability map.
-3. Integration of one existing scanner as the first layer.
+3. Integration of one existing scanner as the first layer. Measured and left out, see "Measurement and decision".
 4. 10 to 15 high-confidence checks from the catalogue of mistakes.
 5. Developer view first, then the other two on the same data.
 6. LLM layer and dynamic check once the above have stabilised.

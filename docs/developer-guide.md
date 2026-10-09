@@ -56,9 +56,13 @@ src/honeywagon/
     tools.py          inject-shell, inject-sql, tool-free-form-sql,
                       mcp-fetch-any-url
     mcp_servers.py    mcp-unpinned-server
+    dependencies.py   dep-security
     references.py     ref-missing-file
     portability.py    port-absolute-path
     project_tests.py  test-real-database
+  deps/
+    manifests.py      the dependencies a project declares, with file and line
+    osv.py            the lookup of known vulnerabilities, the only network use
   guard/
     redact.py         finds secrets and removes them from every output
   report/
@@ -69,6 +73,7 @@ src/honeywagon/
     secret_patterns.toml  the shapes of keys and tokens
     builtin_tools.toml    what each built-in Claude Code tool touches
     python_calls.toml     the Python calls the code reader recognises
+    dependencies.toml     the launchers that download a package, and their registry
     risk.toml             the tier of each reason in the risk map
     text/en.toml          every text the creator reads
 tests/                unit tests, and the evaluation on the fixtures
@@ -78,7 +83,8 @@ evaluate.py           compares the tool's findings with the planted mistakes
 
 ## How one audit runs
 
-`pipeline.run_audit(folder)` does these steps in order and returns a `RunResult`:
+`pipeline.run_audit(folder, lookup=None)` does these steps in order and returns a
+`RunResult`:
 
 1. **Read.** `files.load_project` walks the folder and reads the text files into
    memory. Whatever it does not read becomes a `NotChecked` entry with a reason.
@@ -215,6 +221,9 @@ holds because no code in the package writes a file.
 - **The same input gives the same result.** Files are read in sorted order and
   findings are sorted. There is no timestamp in the result.
 - **No text for the creator inside Python.** It goes into `data/text/en.toml`.
+- **Nothing leaves the machine unless the person asks.** The lookup of dependencies
+  runs only when a lookup is passed to `run_audit`, and it sends package names and
+  versions only.
 - **The core does not import or assume Claude Code.** It knows the file formats of
   the artifacts it audits, and nothing about where it runs.
 
@@ -272,6 +281,12 @@ Follow these steps in order. The example adds a check with the id `example-check
    `Hit` takes an optional fourth value, the suggested change. Set it only when the
    code knows the exact line as it should become.
 
+   Two more optional values exist for a check whose result depends on what it found.
+   `severity` replaces the severity of the definition for that one hit. `values` fills
+   the places marked `{name}` in the consequence text of the check. `dep-security`
+   uses both: the severity follows the rating of the vulnerability, and the text
+   lists the ids that were found.
+
 5. **Register the module.** If it is a new module, import it in
    `src/honeywagon/checks/__init__.py`. A definition in `checks.toml` with no
    registered function fails when the checks are loaded.
@@ -295,6 +310,39 @@ that count as shell, network or database are in `python_calls.toml`. The tier of
 reason in the risk map is in `risk.toml`. The wording is in `text/en.toml`. Changing these needs no Python, but run the tests and the evaluation
 afterwards: a looser pattern can produce false findings on the clean fixture.
 
+## Dependencies and the lookup
+
+`deps/manifests.py` reads the dependencies into `analysis.dependencies`: registry,
+name, exact version or `None`, file and line. `deps/osv.py` holds the lookup.
+
+The lookup is a **parameter**, not something the core does by itself:
+
+```python
+Lookup = Callable[[str, str, str], tuple[Advisory, ...] | None]
+
+run_audit(folder)                      # nothing is sent anywhere
+run_audit(folder, osv_lookup)          # asks api.osv.dev
+run_audit(folder, recorded_lookup())   # answers from fixtures/advisories.json
+```
+
+A lookup takes registry, name and version and returns the advisories of that version,
+an empty tuple when there are none, or `None` when it failed. `analyse` calls it once
+per package with an exact version and keeps the answers in `analysis.advisories`. The
+check `dep-security` only reads those answers.
+
+- `cli.main` passes `osv_lookup` only when the command has `--lookup`.
+- `osv_lookup` is the only code in the package that opens a network connection. It
+  talks to one address, written in the module, with a time limit, and it returns
+  `None` on any failure. It does not raise.
+- The database lists one vulnerability under several ids (`GHSA-...`, `PYSEC-...`).
+  `advisories_from` joins them through their aliases.
+- The pipeline records what was sent in `RunResult.looked_up`, and what was not looked
+  up in `not_checked`, with the reason.
+
+**Tests never use the network.** `tests/conftest.py` replaces `urlopen` for every
+test with a function that fails. A test that needs an answer passes its own lookup,
+or replaces `urlopen` with a fake that plays back a recorded response.
+
 ## The evaluation
 
 `evaluate.py` runs the core on every fixture and compares the findings with each
@@ -308,6 +356,12 @@ the file are the same and the line is within three lines.
 
 The numbers are shown per check, per kind of project and per fixture, never as one
 total. `--layer deterministic` counts only the mistakes that code is expected to find.
+
+The evaluation gives the core the recorded answers of the OSV database in
+`fixtures/advisories.json`, so it needs no network and gives the same numbers on every
+run. `--online` asks the database itself, to see whether something new was published.
+`--record` asks it and rewrites the file. A test checks that every dependency of the
+fixtures has a recorded answer.
 
 ## Adding a language
 

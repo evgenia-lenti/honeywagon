@@ -43,7 +43,7 @@ The tool is a chain of steps with two paths: the fast one, with code only, and t
 ```mermaid
 flowchart TD
     A["1. Project detection"] --> B["2. Capability map"]
-    B --> C["3. Checks with code and mcpscan-cli"]
+    B --> C["3. Checks with code"]
     C -->|"/audit"| G["6. Classification: severity, confidence"]
     C -->|"/audit full"| D["4. Six checkers (subagents)"]
     D --> E["5. audit validate and verifier per finding"]
@@ -58,7 +58,7 @@ Both paths end at the same classification step and the same report, so the form 
 | --- | --- | --- |
 | Detection | Finds the kind of project from its files | Code |
 | Capability map | Records tools, permissions, hooks and what each one touches | Code |
-| Deterministic checks | Our own checks and the integrated scanner | Code |
+| Deterministic checks | Our own checks, and on request a lookup of the dependencies in a public database | Code |
 | Checkers | One agent per group of mistakes, in parallel, with a coordinator | Model |
 | Verifier | An independent call that rejects whatever has no evidence | Model |
 | Classification and verdict | Severity, confidence, simple or complex fix, proposed verdict | Code |
@@ -92,8 +92,7 @@ src/honeywagon/
   capability/         parsers per file kind, one adapter per framework
   checks/             deterministic checks and their registry
   data/               check definitions, secret patterns, and the texts per language
-  scanners/           adapters for off-the-shelf scanners
-  deps/               dependency check (WARM), registry lookups
+  deps/               the project's dependencies, and the lookup of known vulnerabilities
   triage.py           risk map per feature
   validate.py         check of each finding before it is accepted
   classify.py         severity, confidence, simple or complex, verdict
@@ -236,7 +235,7 @@ For agents there is one adapter per framework behind a common interface. In the 
 
 ### Off-the-shelf scanner
 
-mcpscan-cli runs as an external process with JSON output, and an adapter converts each of its results into a `Finding`. Its version is pinned. If it is missing or fails, the step is recorded as "not checked" and the chain continues.
+No off-the-shelf scanner is integrated. mcpscan-cli was measured on the fixtures and left out: it found nothing that the tool's own checks did not find, and the rules of it that are useful are small checks on the analysis the core already builds. The numbers and the reasons are in `design.md`, section "Measurement and decision". The checks to write are listed in `known-gaps.md`.
 
 ### Check registry
 
@@ -278,6 +277,18 @@ Implementation decisions:
 - **Whatever cannot be verified is marked as unknown.** Without network, A and M come out `unknown` and go into "not checked". Never an invented date, version or vulnerability.
 - **Mapping to the finding model.** Each question with a problem becomes one `Finding` with its own `check_id` (`dep-worth`, `dep-alive`, `dep-rightsized`, `dep-security`). A known vulnerability is `critical` or `error`, an abandoned dependency `warning`, W and R `suggestion`.
 - **Fix.** Upgrading or pinning a version is a one-line change in the manifest, so `fix_effort: simple` with a proposed change in the report.
+
+**First version, as built.** Only question M is answered, and only for known vulnerabilities:
+
+- **What is read.** Direct dependencies from `requirements*.txt`, from the `[project]` table of `pyproject.toml`, and the packages that a `.mcp.json` downloads with a launcher such as `npx` or `uvx`. The registry is PyPI or npm.
+- **What is looked up.** Only a dependency with one exact version (`name==1.2.3`, `name@1.2.3`). The others are reported as "not checked", by name.
+- **Only on request.** The lookup runs when the audit is started with `--lookup`. Without it nothing is sent anywhere, and the report lists under "not checked" the names and versions that would be sent. The reason: the name of a private package would otherwise leave the machine without anyone deciding it.
+- **Where.** One address, `api.osv.dev`. The request holds the registry, the package name and the version. The result records what was sent.
+- **One finding per package** (`dep-security`), on the line that declares it. Its text lists the ids of the vulnerabilities and, for each, the fixing versions as the database gives them. The same vulnerability listed under several ids is counted once.
+- **Severity.** `critical` when the database rates one of the vulnerabilities CRITICAL, otherwise `error`. The rating that counts as critical is data.
+- **No suggested version.** The tool does not name a version to move to, because it does not know that the version has no vulnerability of its own.
+- **Failure.** A lookup that fails is reported as "not checked" and the audit goes on.
+- **Measurements.** The tests and `evaluate.py` use recorded answers of the database, so that they need no network and give the same numbers each time.
 
 ### Risk map (triage)
 
@@ -472,7 +483,7 @@ Secret detection is done in the deterministic layer. The `evidence` of such a fi
 
 ```
 audit <folder> [--llm] [--dynamic] [--format json|text]
-                [--out <folder>] [--baseline <file>] [--max-cost <amount>] [--offline]
+                [--out <folder>] [--baseline <file>] [--max-cost <amount>] [--lookup]
 
 audit stats [--repo <name>] [--since <date>]
 ```
@@ -488,7 +499,7 @@ audit stats [--repo <name>] [--since <date>]
 | `--max-cost` | Upper limit on the cost of the run, when it runs with an API key |
 | `audit stats` | Statistics per check and per repo from the local history |
 
-With `--offline` no lookup is made in package registries. Questions A and M of the dependency check come out `unknown` and go into "not checked".
+Without `--lookup` no lookup is made in package registries or vulnerability databases. Questions A and M of the dependency check come out `unknown` and go into "not checked", with the names that a lookup would send. Inside Claude Code the skill asks the user before it runs the audit with `--lookup`.
 
 Exit codes: `0` no `critical`, `1` at least one `critical` with `high` or `medium` confidence, `2` usage or execution error. Code `1` is a signal for whoever calls the command from a script, not a block.
 
@@ -609,7 +620,7 @@ The numbers will be measured on the fixtures. The mechanisms are defined here.
 
 | Topic | Mechanism |
 | --- | --- |
-| Speed of the deterministic layer | No model calls, so that the fast audit answers in seconds. The only network calls are the dependency lookups in package registries, with caching of the responses |
+| Speed of the deterministic layer | No model calls, so that the fast audit answers in seconds. The only network calls are the dependency lookups, which are made only on request |
 | Cost per full run | Upper limit from the `--max-cost` parameter. When it is exceeded, the agents stop and the report states what was not completed |
 | Turn limit per agent | Safety net, with a warning in the log if it is reached |
 | File size | `read_file` has a limit and returns chunks. Large or binary files go into "not checked" |
@@ -634,7 +645,8 @@ Inside Claude Code the full run consumes from the user's subscription, not from 
 | Confidence comes from the path | The confidence that a model declares is not calibrated | Numeric confidence from the agent |
 | Severity and verdict from code | The same input gives the same verdict | Verdict from a model |
 | The tool proposes, the developer warns, the creator decides | The goal is to help, not to restrict. Responsibility for whatever goes to production lies with the creator | Automatic blocking of the merge |
-| mcpscan-cli behind an adapter | Runs locally, MIT licence, covers part of the catalogue | Snyk agent-scan: needs an account and sends data to a third party |
+| No off-the-shelf scanner is integrated | mcpscan-cli was measured on the fixtures and added nothing to the tool's own checks. Its useful rules are small checks on the analysis the core already builds | mcpscan-cli behind an adapter. Snyk agent-scan: needs an account and sends data to a third party |
+| The dependency lookup runs only on request | The name of a private package would otherwise leave the machine without anyone deciding it. The report lists what would be sent | Lookup by default, switched off with a parameter |
 | Stable ID without a line number | The finding stays the same when lines move, so run-to-run comparison works | ID from file and line |
 | Checks as data | Severity and descriptions change without a code change | Everything inside the code |
 | SQL is read with a parser library (sqlglot), behind one module | It understands joins, subqueries and aliases. MIT licence, no dependencies of its own. It parses the text and never runs it | A small reader of our own: fewer statements understood, more "unknown" in the report |
@@ -674,6 +686,6 @@ Decisions about how the tool is used:
 - [ ] **Limits of the dynamic tester.** It will start project code. With what restrictions?
 - [x] **Language of the texts for the creator.** If it is Greek, the check definitions need two languages. Decided: English for now. Every such text is in one file per language (`data/text/en.toml`), so a second language is a second file with the same keys.
 - [ ] **Intent from existing documents.** How are the workshop notes located inside a repo, and what happens when they do not exist or are older than the code?
-- [ ] **Limits of the dependency check.** After how long without a release is a dependency considered abandoned, and which registries go into the closed list?
+- [ ] **Limits of the dependency check.** After how long without a release is a dependency considered abandoned, and which registries go into the closed list? In the first version the list has one address, the OSV database, for PyPI and npm packages.
 - [ ] **Data scope from dynamic SQL.** When the query is composed in the code, how far can the parser determine tables and columns before writing `unknown`? In the first version it does not try: only constant text is read, and a tool with composed SQL is reported as "not checked". Open for later: reading the fixed part of a composed statement.
 - [ ] **Grouping by feature in the risk map.** Is it done with code from the folder structure, or does it need a model? In the first version it is code, with one group per file that gives capabilities. Open for later: joining the files of one feature, which needs judgment.

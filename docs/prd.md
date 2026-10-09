@@ -184,7 +184,7 @@ The same principle at the level of functions and classes is out of scope.
 
 | ID | Requirement |
 | --- | --- |
-| N1 | **Local execution.** The deterministic layer does not send code or project content anywhere. The only exception is the dependency check, which queries public package registries sending only the package name and version, and is disabled with a parameter. The model-based layer sends data only to the model provider |
+| N1 | **Local execution.** The deterministic layer does not send code or project content anywhere. The only exception is the dependency check, which queries a public database sending only the package name and version. It runs only when it is asked for with a parameter, because the name of a private package would otherwise leave the machine without anyone deciding it. Without the parameter the report lists what would be sent. The model-based layer sends data only to the model provider |
 | N2 | **Security of the checker.** It only reads, inside the project folder, without network. Whatever it reads it treats as data and not as instructions. The restrictions are enforced by code |
 | N3 | **No secret in the output.** Not in the report, not in the statistics, not in logs. Only the location is recorded |
 | N4 | **Nothing inside the project, nothing to third parties.** The tool does not write files in the project and does not send findings to a third-party system. The history stays on the computer of whoever runs the tool. The tool only reads and does not change files |
@@ -226,7 +226,7 @@ The first version must be simple and be finished quickly. Whatever is left out i
 
 | Part | What it contains |
 | --- | --- |
-| Core in Python | Project type detection, capability map, code-based checks, mcpscan-cli if its measurements on the fixtures justify it, known vulnerabilities of dependencies, simple risk map, classification and proposed verdict |
+| Core in Python | Project type detection, capability map, code-based checks, known vulnerabilities of dependencies on request, simple risk map, classification and proposed verdict |
 | Plugin for Claude Code | `/audit` for a quick check and `/audit full` for a full one, with the report in the conversation |
 | Six checkers as subagents | Access, data flow, intent versus implementation, reliability with suggestions for tests (ZOMBIES), practices, performance and scaling |
 | Verifier | Independent subagent per finding |

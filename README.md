@@ -14,7 +14,7 @@ it audits. The creator of a project decides what goes to production.
 
 Under construction: step 3 of 6, the deterministic core. The `audit` command lists
 what a project can do (its tools, MCP servers, hooks and agents, and which tables each
-tool reaches), points to the parts that deserve attention first, runs fourteen checks
+tool reaches), points to the parts that deserve attention first, runs fifteen checks
 written in code, and gives a report with a proposed verdict. Nothing that needs
 judgment is checked yet, and the report says so under "not checked".
 
@@ -58,8 +58,16 @@ On macOS and Linux, use `.venv/bin/python` in place of `.venv\Scripts\python`.
 .venv\Scripts\audit <folder> --format json
 ```
 
-The command only reads the folder. It exits with `1` when it finds a critical
-problem, as a signal for scripts. It does not block anything.
+The command only reads the folder, and it sends nothing anywhere. It exits with `1`
+when it finds a critical problem, as a signal for scripts. It does not block anything.
+
+To also look the project's dependencies up in the public [OSV](https://osv.dev)
+database of known vulnerabilities, add `--lookup`. That sends the names and versions
+of the dependencies, and nothing else:
+
+```powershell
+.venv\Scripts\audit <folder> --lookup
+```
 
 ## Fixtures and evaluation
 
@@ -73,7 +81,7 @@ per kind of project:
 .venv\Scripts\python evaluate.py --layer deterministic
 ```
 
-Today it finds all 15 planted mistakes that code can find, with no false finding. The
+Today it finds all 17 planted mistakes that code can find, with no false finding. The
 other 6 need judgment and wait for the checkers that use a model.
 
 ## Documentation
