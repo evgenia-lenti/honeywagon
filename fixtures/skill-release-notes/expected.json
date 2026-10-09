@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "project_kind": "skill",
+  "expected": [
+    {
+      "check_id": "perm-broad-bash",
+      "file": "SKILL.md",
+      "line": 4,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "allowed-tools: Bash,"
+    },
+    {
+      "check_id": "secret-in-file",
+      "file": "SKILL.md",
+      "line": 17,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "ANTHROPIC_API_KEY="
+    },
+    {
+      "check_id": "ref-missing-file",
+      "file": "SKILL.md",
+      "line": 13,
+      "severity": "error",
+      "layer": "deterministic",
+      "contains": "scripts/publish.sh"
+    },
+    {
+      "check_id": "port-absolute-path",
+      "file": "scripts/collect_commits.py",
+      "line": 5,
+      "severity": "warning",
+      "layer": "deterministic",
+      "contains": "REPO = "
+    },
+    {
+      "check_id": "intent-description-mismatch",
+      "file": "SKILL.md",
+      "line": 3,
+      "severity": "error",
+      "layer": "model",
+      "contains": "Read-only."
+    }
+  ]
+}

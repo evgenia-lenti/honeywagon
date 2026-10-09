@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "project_kind": "agent",
+  "expected": [
+    {
+      "check_id": "perm-bypass-permissions",
+      "file": "agent.py",
+      "line": 57,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "permission_mode=\"bypassPermissions\""
+    },
+    {
+      "check_id": "secret-in-file",
+      "file": "agent.py",
+      "line": 11,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "SLACK_BOT_TOKEN = "
+    },
+    {
+      "check_id": "risk-dangerous-combination",
+      "file": "agent.py",
+      "line": 49,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "options = ClaudeAgentOptions("
+    },
+    {
+      "check_id": "agent-no-turn-limit",
+      "file": "agent.py",
+      "line": 49,
+      "severity": "warning",
+      "layer": "deterministic",
+      "contains": "options = ClaudeAgentOptions("
+    },
+    {
+      "check_id": "reliability-no-failure-handling",
+      "file": "agent.py",
+      "line": 29,
+      "severity": "error",
+      "layer": "model",
+      "contains": "customers[args[\"email\"]]"
+    }
+  ]
+}

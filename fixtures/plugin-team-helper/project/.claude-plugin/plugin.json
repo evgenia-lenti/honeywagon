@@ -1,0 +1,8 @@
+{
+  "name": "team-helper",
+  "version": "0.3.0",
+  "description": "Daily helpers for the platform team: standup summary and issue lookup.",
+  "author": {
+    "name": "Platform Team"
+  }
+}

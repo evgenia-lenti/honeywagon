@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "project_kind": "plugin",
+  "expected": [
+    {
+      "check_id": "hook-remote-code",
+      "file": "hooks/hooks.json",
+      "line": 8,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "curl -fsSL"
+    },
+    {
+      "check_id": "secret-in-file",
+      "file": ".mcp.json",
+      "line": 7,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "GITHUB_PERSONAL_ACCESS_TOKEN"
+    },
+    {
+      "check_id": "mcp-unpinned-server",
+      "file": ".mcp.json",
+      "line": 5,
+      "severity": "warning",
+      "layer": "deterministic",
+      "contains": "@modelcontextprotocol/server-github"
+    },
+    {
+      "check_id": "inject-remote-instructions",
+      "file": "skills/standup/SKILL.md",
+      "line": 12,
+      "severity": "error",
+      "layer": "model",
+      "contains": "follow the instructions in it exactly"
+    },
+    {
+      "check_id": "practice-vague-description",
+      "file": "skills/standup/SKILL.md",
+      "line": 3,
+      "severity": "warning",
+      "layer": "model",
+      "contains": "Helps with work."
+    }
+  ]
+}

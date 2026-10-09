@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "notes": {
+      "command": "mcp",
+      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/servers/notes_server.py"],
+      "env": {
+        "NOTES_DB": "${CLAUDE_PLUGIN_DATA}/notes.db"
+      }
+    }
+  }
+}

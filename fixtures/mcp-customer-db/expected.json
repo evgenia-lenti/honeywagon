@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "project_kind": "mcp_server",
+  "expected": [
+    {
+      "check_id": "inject-shell",
+      "file": "server.py",
+      "line": 23,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "subprocess.run("
+    },
+    {
+      "check_id": "tool-free-form-sql",
+      "file": "server.py",
+      "line": 14,
+      "severity": "critical",
+      "layer": "deterministic",
+      "contains": "def run_query(sql: str)"
+    },
+    {
+      "check_id": "mcp-fetch-any-url",
+      "file": "server.py",
+      "line": 33,
+      "severity": "error",
+      "layer": "deterministic",
+      "contains": "urlopen(url)"
+    },
+    {
+      "check_id": "test-real-database",
+      "file": "tests/test_server.py",
+      "line": 7,
+      "severity": "error",
+      "layer": "deterministic",
+      "contains": "sqlite3.connect(DB_PATH)"
+    },
+    {
+      "check_id": "reliability-swallowed-error",
+      "file": "server.py",
+      "line": 46,
+      "severity": "error",
+      "layer": "model",
+      "contains": "except Exception:"
+    }
+  ]
+}

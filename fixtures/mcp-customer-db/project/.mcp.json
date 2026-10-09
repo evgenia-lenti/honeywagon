@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "customer-db": {
+      "command": "mcp",
+      "args": ["run", "server.py"]
+    }
+  }
+}
