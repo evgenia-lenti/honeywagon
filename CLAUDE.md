@@ -33,7 +33,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 4 of 6: Claude Code plugin with `/honeywagon:audit`.**
+**Step 5 of 6: `/honeywagon:audit full` with six checker subagents and a verifier.**
 
 Update this line when a step is finished and reviewed.
 
