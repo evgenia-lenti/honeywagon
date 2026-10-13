@@ -1,0 +1,11 @@
+{
+  "name": "honeywagon",
+  "version": "0.1.0",
+  "description": "Audit a skill, plugin, MCP server or Python agent built with Claude: what it can do and what it risks. Read-only and advisory.",
+  "author": {
+    "name": "Evgenia Lenti"
+  },
+  "repository": "https://github.com/evgenia-lenti/honeywagon",
+  "license": "MIT",
+  "keywords": ["audit", "security", "skills", "mcp", "agents"]
+}

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Runs the Honeywagon core with the arguments it is given.
+#
+# The core is a Python package that is installed apart from this plugin. This
+# script only finds it: first as the `honeywagon` command, then as a module of
+# a Python on this computer. It installs nothing and it changes nothing.
+
+if command -v honeywagon >/dev/null 2>&1; then
+  exec honeywagon "$@"
+fi
+
+for python in "py -3" python3 python; do
+  if $python -c "import honeywagon" >/dev/null 2>&1; then
+    exec $python -m honeywagon "$@"
+  fi
+done
+
+echo "The Honeywagon core is not installed on this computer." >&2
+echo "Install it once and run the audit again. The steps are at" >&2
+echo "https://github.com/evgenia-lenti/honeywagon/tree/main/runners/claude_code" >&2
+exit 3

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "honeywagon"
-version = "0.0.1"
+version = "0.1.0"
 description = "On-demand audit tool for agentic AI artifacts built with Claude."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,6 +18,7 @@ dev = ["pytest", "ruff", "mypy", "types-PyYAML"]
 
 [project.scripts]
 audit = "honeywagon.cli:main"
+honeywagon = "honeywagon.cli:main"
 
 [tool.setuptools.package-data]
 honeywagon = ["data/*.toml", "data/text/*.toml"]

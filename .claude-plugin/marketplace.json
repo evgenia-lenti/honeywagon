@@ -1,0 +1,14 @@
+{
+  "name": "honeywagon",
+  "owner": {
+    "name": "Evgenia Lenti"
+  },
+  "description": "Honeywagon: an advisory, read-only audit of skills, plugins, MCP servers and Python agents built with Claude",
+  "plugins": [
+    {
+      "name": "honeywagon",
+      "source": "./runners/claude_code",
+      "description": "Audit a skill, plugin, MCP server or Python agent built with Claude: what it can do and what it risks. Read-only and advisory."
+    }
+  ]
+}

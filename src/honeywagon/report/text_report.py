@@ -24,7 +24,7 @@ def _place(location: Location) -> str:
     return f"{location.file}:{location.line}"
 
 
-def _data(scope: DataScope, texts: dict[str, Any]) -> str:
+def describe_data(scope: DataScope, texts: dict[str, Any]) -> str:
     """Describe which data a tool reaches, in one line."""
     labels = texts["data_scope"]
     by_table: dict[str, list[str]] = {}
@@ -97,7 +97,7 @@ def _capabilities(capabilities: CapabilityMap, texts: dict[str, Any]) -> list[st
                 f"    {tool.name}  ({_place(tool.declared_in)})  {what}; {how}"
             )
             if tool.data_scope.status != "none":
-                lines.append(f"        {_data(tool.data_scope, texts)}")
+                lines.append(f"        {describe_data(tool.data_scope, texts)}")
     if capabilities.mcp_servers:
         lines.append(f"  {labels['mcp_servers']}")
         for server in capabilities.mcp_servers:
