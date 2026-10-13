@@ -12,7 +12,7 @@ it audits. The creator of a project decides what goes to production.
 
 ## Status
 
-Under construction: step 4 of 6. The deterministic core is done, and a plugin runs
+Under construction: step 4 of 6 is done. The deterministic core is ready, and a plugin runs
 it from inside Claude Code with `/honeywagon:audit`. The audit lists
 what a project can do (its tools, MCP servers, hooks and agents, and which tables each
 tool reaches), points to the parts that deserve attention first, runs nineteen checks
