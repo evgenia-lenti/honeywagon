@@ -33,7 +33,7 @@ step, and the documents win for technical detail.
 
 ## Current step
 
-**Step 4 of 6: Claude Code plugin with `/audit`.**
+**Step 4 of 6: Claude Code plugin with `/honeywagon:audit`.**
 
 Update this line when a step is finished and reviewed.
 
@@ -45,8 +45,8 @@ Update this line when a step is finished and reviewed.
 3. Deterministic core: project detection, capability map, code-based checks,
    known-vulnerability check for dependencies, simple risk map, classification,
    proposed verdict.
-4. Claude Code plugin with `/audit`, reporting in the conversation.
-5. `/audit full`: six checker subagents and a verifier subagent, with plugin hooks.
+4. Claude Code plugin with `/honeywagon:audit`, reporting in the conversation.
+5. `/honeywagon:audit full`: six checker subagents and a verifier subagent, with plugin hooks.
 6. Dynamic tester for MCP servers and scripts, in Docker, without a model.
 
 The tool is already useful after step 4. Steps 5 and 6 make it deeper.
@@ -198,11 +198,18 @@ Lint, format check and type check:
 .venv\Scripts\python -m mypy
 ```
 
+The Claude Code plugin is in `runners/claude_code/`, and
+`.claude-plugin/marketplace.json` at the root makes this repository a marketplace
+for it. Its skill runs the core through `bin/honeywagon-audit`. The plugin holds no
+check logic. The version is written in `pyproject.toml`, in the plugin's `plugin.json`
+and in the install command of its README, and a test keeps the three the same.
+
 Audit a project folder with the deterministic layer:
 
 ```powershell
 .venv\Scripts\audit <folder>
 .venv\Scripts\audit <folder> --format json
+.venv\Scripts\audit <folder> --format markdown
 .venv\Scripts\audit <folder> --lookup
 ```
 

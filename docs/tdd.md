@@ -20,7 +20,7 @@ The document describes the full design. The first version implements part of it,
 | In the first version | Later |
 | --- | --- |
 | Core in Python, with all the checks that are done with code | Runner with the Agent SDK and measurements with a model |
-| Plugin with `/audit` and `/audit full` | Local history, statistics, run-to-run comparison |
+| Plugin with `/honeywagon:audit` and `/honeywagon:audit full` | Local history, statistics, run-to-run comparison |
 | Six checkers and a verifier, as subagents | Local MCP server |
 | Plugin hooks | Full WARM (from WARM only the known vulnerabilities are included) |
 | Dynamic tester for MCP servers and scripts | Dynamic testing of skills and agents |
@@ -44,8 +44,8 @@ The tool is a chain of steps with two paths: the fast one, with code only, and t
 flowchart TD
     A["1. Project detection"] --> B["2. Capability map"]
     B --> C["3. Checks with code"]
-    C -->|"/audit"| G["6. Classification: severity, confidence"]
-    C -->|"/audit full"| D["4. Six checkers (subagents)"]
+    C -->|"/honeywagon:audit"| G["6. Classification: severity, confidence"]
+    C -->|"/honeywagon:audit full"| D["4. Six checkers (subagents)"]
     D --> E["5. audit validate and verifier per finding"]
     E --> G
     G --> H["7. Proposed verdict"]
@@ -509,17 +509,28 @@ The main way of use. It also works inside the IDE, where Claude Code runs as an 
 
 | Component | What it does |
 | --- | --- |
-| `audit` skill | The `/audit` command. Runs the core, starts the checkers and presents the report |
+| `audit` skill | The `/honeywagon:audit` command. Runs the core, starts the checkers and presents the report |
 | Subagents | One per checker, the verifier and the writer, built from the files in `definitions/` |
 | Hooks | The security restrictions of the checkers |
 | Local MCP server | The core's tools |
 
 | Command | What runs |
 | --- | --- |
-| `/audit` | Only the deterministic layer. Finishes in seconds |
-| `/audit full` | Also the checkers, the verifier and the writer |
+| `/honeywagon:audit` | Only the deterministic layer. Finishes in seconds |
+| `/honeywagon:audit full` | Also the checkers, the verifier and the writer |
 
-The flow of `/audit full`:
+Claude Code puts the name of the plugin in front of every command of a plugin, so the command is `/honeywagon:audit` and cannot be a bare `/audit`.
+
+**First version, as built in step 4.** The plugin has one skill and no subagent, hook or MCP server yet:
+
+- **Where.** `runners/claude_code/`, with a `marketplace.json` at the root of the repository that points to it. Only that folder reaches a user's computer.
+- **The core is installed apart from the plugin,** with one `pip` command that names an exact version. The plugin's `bin/honeywagon-audit` only finds the core and runs it. It installs nothing. If the core is missing, it says so and the skill shows the install steps.
+- **The report is made by code.** The core has a third output format, Markdown, for the conversation. Everything in it that comes from the audited project is written as code or escaped. The skill tells the model to show the report unchanged and to add its own short note below it.
+- **One command runs without asking.** The skill's `allowed-tools` holds the exact audit command, with no wildcard. The same command with `--lookup` is not in it, so Claude Code itself asks the user before anything is sent to the OSV database. The skill also asks in words first, and names the packages.
+- **The audit changes nothing.** The skill tells the model not to edit files as part of it, also not to apply a suggested change. A fix is a separate request of the user.
+- **The plugin passes its own audit** with no finding. A test checks it.
+
+The flow of `/honeywagon:audit full`:
 
 1. The skill runs the core, which produces the capability map, the risk map and the deterministic findings.
 2. It starts in parallel the checkers that match the kind of project. Each one gets its data from `get_capability_map`.
@@ -646,6 +657,8 @@ Inside Claude Code the full run consumes from the user's subscription, not from 
 | Severity and verdict from code | The same input gives the same verdict | Verdict from a model |
 | The tool proposes, the developer warns, the creator decides | The goal is to help, not to restrict. Responsibility for whatever goes to production lies with the creator | Automatic blocking of the merge |
 | No off-the-shelf scanner is integrated | mcpscan-cli was measured on the fixtures and added nothing to the tool's own checks. Its useful rules are small checks on the analysis the core already builds | mcpscan-cli behind an adapter. Snyk agent-scan: needs an account and sends data to a third party |
+| The core is installed by the user, apart from the plugin | Nothing is downloaded without the user knowing, and the plugin stays a thin layer | A plugin that builds its own Python environment and downloads the dependencies on first use |
+| The report for the conversation is Markdown made by the core | The same input gives the same report, and text from the audited project cannot pass for text of the tool | The model writes the report from the JSON result |
 | The dependency lookup runs only on request | The name of a private package would otherwise leave the machine without anyone deciding it. The report lists what would be sent | Lookup by default, switched off with a parameter |
 | Stable ID without a line number | The finding stays the same when lines move, so run-to-run comparison works | ID from file and line |
 | Checks as data | Severity and descriptions change without a code change | Everything inside the code |

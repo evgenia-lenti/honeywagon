@@ -12,11 +12,32 @@ it audits. The creator of a project decides what goes to production.
 
 ## Status
 
-Under construction: step 3 of 6, the deterministic core. The `audit` command lists
+Under construction: step 4 of 6. The deterministic core is done, and a plugin runs
+it from inside Claude Code with `/honeywagon:audit`. The audit lists
 what a project can do (its tools, MCP servers, hooks and agents, and which tables each
 tool reaches), points to the parts that deserve attention first, runs nineteen checks
 written in code, and gives a report with a proposed verdict. Nothing that needs
 judgment is checked yet, and the report says so under "not checked".
+
+## Use it in Claude Code
+
+Install the core once, with Python 3.11 or newer:
+
+```
+py -m pip install https://github.com/evgenia-lenti/honeywagon/archive/refs/tags/v0.1.0.zip
+```
+
+Then add the plugin, inside Claude Code:
+
+```
+/plugin marketplace add evgenia-lenti/honeywagon
+/plugin install honeywagon@honeywagon
+```
+
+Open a project and type `/honeywagon:audit`. The details are in the
+[README of the plugin](runners/claude_code/README.md).
+
+The rest of this page is for working on the code of Honeywagon itself.
 
 ## Requirements
 

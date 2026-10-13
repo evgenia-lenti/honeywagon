@@ -29,11 +29,11 @@ The first version must be simple and finish quickly. It is built in six steps, a
 | 1 | Repo, Python environment, `CLAUDE.md` | Phase 0 |
 | 2 | Three or four fixtures with known mistakes, and the comparison script | Phase 1 |
 | 3 | Deterministic core: capability map, code-based checks, classification, verdict | Phase 2 |
-| 4 | Plugin with `/audit`, which shows the report in the conversation | Below |
-| 5 | `/audit full`: six checkers and a verifier as subagents, with hooks | Below, and phase 6 for the hooks |
+| 4 | Plugin with `/honeywagon:audit`, which shows the report in the conversation | Below |
+| 5 | `/honeywagon:audit full`: six checkers and a verifier as subagents, with hooks | Below, and phase 6 for the hooks |
 | 6 | Dynamic tester for MCP servers and scripts, without a model | Phase 7 |
 
-### Step 4: plugin with `/audit`
+### Step 4: plugin with `/honeywagon:audit`
 
 1. Write an `audit` skill that runs the core's command in the current folder and presents the result.
 2. In its allowed tools put only that specific command.
@@ -42,7 +42,7 @@ The first version must be simple and finish quickly. It is built in six steps, a
 
 From here on the tool is in use. Everything that follows makes it deeper.
 
-### Step 5: `/audit full`
+### Step 5: `/honeywagon:audit full`
 
 1. Write the first checker as a subagent of the plugin: the access checker, with only `Read`, `Grep` and `Glob` as tools.
 2. In its prompt put explicit criteria, two or three examples, and the common rules: verify before you report, fewer and certain, one finding in one line with file and line.
@@ -52,7 +52,7 @@ From here on the tool is in use. Everything that follows makes it deeper.
 6. Add the plugin hooks that deny the checkers anything beyond reading inside the project folder.
 7. Add the other five checkers one by one, in this order: data flow, intent versus implementation (it also reads the workshop notes), reliability with test suggestions, practices, performance and scaling.
 8. Keep the findings of the last two at `warning` at most, in a separate "Observations" section.
-9. After each new checker, run `/audit full` on the fixtures and on the clean fixture, and look by eye at what it produces.
+9. After each new checker, run `/honeywagon:audit full` on the fixtures and on the clean fixture, and look by eye at what it produces.
 
 ### What you apply from the theory in the first version
 
@@ -341,7 +341,7 @@ A fixture that secretly reads the `.env` is caught with a log, and the clean fix
 
 ## Phase 8: Plugin for Claude Code
 
-At the end the colleagues type `/audit` inside Claude Code or their IDE and see the report in the conversation. It is the main way of using the tool, and it runs with the user's subscription, without an API key.
+At the end the colleagues type `/honeywagon:audit` inside Claude Code or their IDE and see the report in the conversation. It is the main way of using the tool, and it runs with the user's subscription, without an API key.
 
 ### What you do
 
@@ -380,7 +380,7 @@ By writing a skill, subagents, hooks and an MCP server, you build exactly the th
 
 ### Done when
 
-`/audit full` on a fixture gives the same findings as the Agent SDK runner, the audit of the plugin itself comes out clean, and a colleague installs it and runs it without help.
+`/honeywagon:audit full` on a fixture gives the same findings as the Agent SDK runner, the audit of the plugin itself comes out clean, and a colleague installs it and runs it without help.
 
 ## Phase 9: Local history and calibration
 

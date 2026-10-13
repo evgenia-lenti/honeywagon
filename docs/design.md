@@ -130,8 +130,8 @@ The tool runs on demand, whenever someone asks for it. It does not run automatic
 
 | Way | Who | What runs |
 | --- | --- | --- |
-| `/audit` in Claude Code or in the IDE | Creators and developers | The deterministic layer, in seconds |
-| `/audit full` in Claude Code or in the IDE | Creators and developers | The checkers with the model as well, on the user's Claude subscription |
+| `/honeywagon:audit` in Claude Code or in the IDE | Creators and developers | The deterministic layer, in seconds |
+| `/honeywagon:audit full` in Claude Code or in the IDE | Creators and developers | The checkers with the model as well, on the user's Claude subscription |
 | Command-line command | Developers | The deterministic layer, and the measurements on the fixtures |
 
 The core is a Python program, independent of Claude Code. The plugin is a layer around it, so that execution with LangGraph or Google ADK can also be added later.

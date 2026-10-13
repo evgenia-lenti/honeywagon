@@ -11,6 +11,9 @@ py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 ```
 
+`py -3.11 -m venv .venv` creates the environment. On macOS and Linux use
+`python3 -m venv .venv` and `.venv/bin/python`.
+
 Run all of these before a review:
 
 ```powershell
@@ -68,7 +71,8 @@ src/honeywagon/
   guard/
     redact.py         finds secrets and removes them from every output
   report/
-    text_report.py    the report for a person
+    text_report.py    the report for a terminal
+    markdown_report.py  the same report as Markdown, for a conversation
     json_report.py    the whole result as JSON
   data/
     checks.toml           severity, fix effort, kinds and options of each check
@@ -78,6 +82,10 @@ src/honeywagon/
     dependencies.toml     the launchers that download a package, and their registry
     risk.toml             the tier of each reason in the risk map
     text/en.toml          every text the creator reads
+runners/
+  claude_code/        the Claude Code plugin: one skill and a launcher, no check logic
+.claude-plugin/
+  marketplace.json    makes this repository a marketplace for that plugin
 tests/                unit tests, and the evaluation on the fixtures
 fixtures/             fake projects with planted mistakes, see fixtures/README.md
 evaluate.py           compares the tool's findings with the planted mistakes
@@ -112,8 +120,9 @@ evaluate.py           compares the tool's findings with the planted mistakes
    `NOT_COVERED`: the layers and checks that do not exist yet. It also names the tools
    whose SQL could not be read.
 
-`cli.main` then prints `report.render_text` or `report.render_json` and returns the
-exit code.
+`cli.main` then prints `report.render_text`, `report.render_markdown` or
+`report.render_json` and returns the exit code. When the output is not a terminal it
+is written as UTF-8, whatever the encoding of the computer is.
 
 ## The analysis and the capability map
 
@@ -359,6 +368,48 @@ check `dep-security` only reads those answers.
 **Tests never use the network.** `tests/conftest.py` replaces `urlopen` for every
 test with a function that fails. A test that needs an answer passes its own lookup,
 or replaces `urlopen` with a fake that plays back a recorded response.
+
+## The Claude Code plugin
+
+`runners/claude_code/` is a thin layer around the core. It holds:
+
+| File | What it does |
+| --- | --- |
+| `.claude-plugin/plugin.json` | Name, version and description of the plugin |
+| `skills/audit/SKILL.md` | The command `/honeywagon:audit`: what Claude runs and how it shows the report |
+| `bin/honeywagon-audit` and `.cmd` | Find the core, as the `honeywagon` command or as a module of a Python, and run it. They install nothing |
+| `README.md` | The install steps for a user |
+
+Rules that the plugin keeps, each with a test in `tests/test_plugin.py`:
+
+- **No check logic in the plugin.** The skill runs the core and shows its Markdown
+  report. A new check goes into the core.
+- **One exact command in `allowed-tools`,** with no wildcard and without `--lookup`. So
+  Claude Code asks the user before a lookup, whatever the model does.
+- **The commands in the skill are commands the core accepts.** The test parses them
+  with the parser of `cli.py`.
+- **One version in three places:** `pyproject.toml`, `plugin.json` and the install
+  command in the plugin's README.
+- **The plugin passes its own audit** with no finding.
+
+`markdown_report.py` writes everything that comes from the audited project as code
+(`code(...)`), or escapes it (`plain(...)`), and builds links with `link(...)`. Use
+these three for any new line of the report, so that a file name or a line of evidence
+cannot change the layout or pass for text of the tool.
+
+To try the plugin on your own computer:
+
+1. Install the core of your clone into a Python that Claude Code can find:
+   `py -3.11 -m pip install --user -e .` from the repository root.
+2. In Claude Code: `/plugin marketplace add <path to your clone>` and then
+   `/plugin install honeywagon@honeywagon`.
+3. Open one of the folders under `fixtures/*/project` and type `/honeywagon:audit`.
+
+To release a version: set it in the three places, run the tests, and after the merge
+create the tag `v<version>` on GitHub. The install command points at that tag.
+
+`claude plugin validate runners/claude_code` checks the manifest when the `claude`
+command is installed.
 
 ## The evaluation
 

@@ -58,15 +58,15 @@ The decision and the responsibility belong to the creator. The tool proposes and
 
 ### The creator checks their project
 
-1. The colleague has built a skill with Claude. They type `/audit` inside Claude Code.
+1. The colleague has built a skill with Claude. They type `/honeywagon:audit` inside Claude Code.
 2. Within seconds they see in the conversation what their skill can do and what it risks, with the findings in plain language.
 3. For the simple fixes they see the proposed change and ask Claude to apply it.
-4. They run `/audit` again and see what was closed.
-5. Before giving it to others, they run `/audit full` for a fuller check.
+4. They run `/honeywagon:audit` again and see what was closed.
+5. Before giving it to others, they run `/honeywagon:audit full` for a fuller check.
 
 ### The developer warns
 
-1. They have read access to the colleagues' repos. They open one of them and run `/audit full`.
+1. They have read access to the colleagues' repos. They open one of them and run `/honeywagon:audit full`.
 2. They read the proposed verdict and the findings, starting from the risk map.
 3. If a finding is wrong, they say so in the conversation and it is recorded.
 4. They point out the serious findings to the creator, and help with the complex fixes when asked. The decision stays with the creator.
@@ -130,7 +130,7 @@ The priorities: P0 is necessary for the first useful version, P1 for use at work
 
 | ID | Requirement | Pri. |
 | --- | --- | --- |
-| F24 | Plugin for Claude Code, with `/audit` for a quick check and `/audit full` for a full one. It also works inside the IDE | P0 |
+| F24 | Plugin for Claude Code, with `/honeywagon:audit` for a quick check and `/honeywagon:audit full` for a full one. It also works inside the IDE | P0 |
 | F25 | Command-line command, for the deterministic layer and for the measurements | P0 |
 | F26 | The model-based layer runs inside the user's session, with their subscription, without an API key | P0 |
 | F27 | The core is independent of Claude Code, so that running with LangGraph or Google ADK can be added later | P1 |
@@ -227,7 +227,7 @@ The first version must be simple and be finished quickly. Whatever is left out i
 | Part | What it contains |
 | --- | --- |
 | Core in Python | Project type detection, capability map, code-based checks, known vulnerabilities of dependencies on request, simple risk map, classification and proposed verdict |
-| Plugin for Claude Code | `/audit` for a quick check and `/audit full` for a full one, with the report in the conversation |
+| Plugin for Claude Code | `/honeywagon:audit` for a quick check and `/honeywagon:audit full` for a full one, with the report in the conversation |
 | Six checkers as subagents | Access, data flow, intent versus implementation, reliability with suggestions for tests (ZOMBIES), practices, performance and scaling |
 | Verifier | Independent subagent per finding |
 | Protection of the checker | Read-only tools and plugin hooks |

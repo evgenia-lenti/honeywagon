@@ -48,6 +48,7 @@ change that finds it.
 | A key in a header is found only in headers with a known name | A key in a header called `X-Team-Secret`, or inside the address of the server | Not planned | A longer list of names, measured on the clean fixture |
 | A new check has no room in the fixtures | Two fixtures hold eight planted mistakes, the most that the test allows | The plan asks for small fixtures | A sixth fixture |
 | Keys are recognised by the shape of known providers | A password, or the key of a service that is not in `secret_patterns.toml`. The exception is a key in a header of an MCP server, which is found by its place | Not planned | A rule for names such as `PASSWORD` and `TOKEN`, measured on the clean fixture for false findings |
+| A file is read or not by the ending of its name, and only `.env` is known by its whole name | A key in `.env.local` or `.env.production`. The file is listed under "not checked" as a kind of file that is not read | Not planned | Read every file whose name starts with `.env`, with a fixture |
 | `perm-bypass-in-settings` has unit tests but no fixture. It is listed as the one exception in `tests/test_fixture_evaluation.py` | — | The rule in `CLAUDE.md` asks for a fixture | Plant it in a fixture and remove the exception |
 | `test-real-database` knows only SQLite | A test that connects to PostgreSQL or MySQL on a real host | Not planned | Add the connect calls of other drivers to `checks.toml`, with a fixture |
 | `ref-missing-file` knows two forms: `${CLAUDE_SKILL_DIR}/...` and Markdown links | A skill that says "run publish.sh" in plain text | Left out on purpose: a file name in a sentence may be a file of the user | Decide after seeing real skills |
@@ -74,6 +75,17 @@ change that finds it.
 | It knows only what the capability map knows | Authentication, personal data, secrets, content written by strangers, complex logic | Yes: the TDD lists them as signals of the risk map | The checkers with a model, in step 5 |
 | One group per file. Files of one feature are not joined | A skill and the MCP server it uses are two groups | The TDD has it as an open question | Needs judgment, so a model |
 | A script that a skill or a hook runs belongs to no group | A hook that runs `scripts/check.py`: the hook is listed, the script is not | Not planned | Follow the command of a hook or the steps of a skill to the file |
+
+## The plugin
+
+| Gap | Example of what is missed | In the design? | What closes it |
+| --- | --- | --- | --- |
+| Inside Claude Code the report passes through the model | The model could shorten the report or reword a finding. The skill forbids it, and nothing in code enforces it | Not planned | Show the report through a channel the model cannot change, if Claude Code offers one |
+| The core is installed apart from the plugin, by hand | A creator without a terminal needs a developer for the first install | Decided for the first version: nothing is downloaded without the user knowing | A plugin that sets the core up itself, after asking |
+| Nothing checks that the plugin and the core are the same version | A new plugin with an old core that does not know `--format markdown` | Not planned | The launcher compares the two versions and says which one to update |
+| `/honeywagon:audit` audits the project that is open | Another folder needs a different command, and Claude Code asks for permission to run it | Not planned | An argument for the folder |
+| The plugin was not checked with `claude plugin validate` | A field that Claude Code rejects is found only when the plugin is installed | Not planned | Run it where the `claude` command is installed, and in CI |
+| The launcher looks for the core in three places | A core installed in a virtual environment that is not active is not found | Not planned | A setting of the plugin that names the Python to use |
 
 ## Waiting for a later step
 

@@ -65,12 +65,30 @@ Unnecessary risks, marked as warning:
 
 ### How to run it
 
-Today the tool runs from a terminal, which is described in Part 2. If you do not use a
-terminal, ask a developer to run it on your project and to go through the report with
-you.
+You run it from inside Claude Code. Open your project there and type:
 
-A command inside Claude Code, `/audit`, is planned. When it exists, you will run the
-audit yourself from the conversation.
+```
+/honeywagon:audit
+```
+
+You can also ask in words, for example "audit this skill" or "is this plugin safe to
+share?". Claude runs the audit and shows the report in the conversation.
+
+Before the first time, two things have to be installed on your computer: the program
+that does the checks, and the plugin that adds the command. The steps are in Part 2,
+under "Install". If you do not use a terminal, ask a developer to do them with you
+once.
+
+Three things to know about the audit inside Claude Code:
+
+- **The report is not written by Claude.** A program makes it, with fixed rules, and
+  Claude shows it as it is. Below the report Claude adds a short note of its own,
+  after a line that separates the two.
+- **Nothing is changed.** If you want a finding fixed, ask for it afterwards. That is a
+  new request, and Claude asks your permission for the change as it always does.
+- **Nothing is sent anywhere, unless you say yes.** Claude may ask whether to look your
+  dependencies up in a public database. It names what would be sent, and Claude Code
+  asks for your permission once more before it runs.
 
 ### How to read the report
 
@@ -254,29 +272,52 @@ the tool, and reporting it helps fix it.
 
 ### Install
 
-Honeywagon needs Python 3.11 or newer. From the repository root:
+There are two parts. Both are installed once.
 
-```powershell
-py -3.11 -m venv .venv
-.venv\Scripts\python -m pip install -e ".[dev]"
+**1. The core,** the program that does the checks. It needs Python 3.11 or newer:
+
+```
+py -m pip install https://github.com/evgenia-lenti/honeywagon/archive/refs/tags/v0.1.0.zip
 ```
 
-On macOS and Linux use `python3 -m venv .venv` and `.venv/bin/python`.
+On macOS and Linux write `python3` in place of `py`. If `pip` answers
+`externally-managed-environment`, use `pipx install` with the same address. The
+address names one exact version. This gives two commands that do the same, `honeywagon`
+and `audit`.
+
+**2. The plugin,** which adds the command to Claude Code. Type inside Claude Code:
+
+```
+/plugin marketplace add evgenia-lenti/honeywagon
+/plugin install honeywagon@honeywagon
+```
+
+The plugin does not contain the core and does not install it. If the core is missing,
+`/honeywagon:audit` says so and points to these steps.
+
+To work on the code of Honeywagon itself, use a virtual environment in a clone of the
+repository. That is described in the [developer guide](developer-guide.md).
 
 ### Run
 
-```powershell
-.venv\Scripts\audit <folder>
-.venv\Scripts\audit <folder> --format json
+Inside Claude Code, `/honeywagon:audit` audits the project that is open. From a
+terminal:
+
+```
+honeywagon <folder>
+honeywagon <folder> --format json
 ```
 
 `<folder>` is the root of the project to audit. `python -m honeywagon <folder>` does
-the same.
+the same. In a clone of the repository the command is `.venv\Scripts\audit`.
 
 | Option | What it does |
 | --- | --- |
-| `--format text` | The report for a person. This is the default |
+| `--format text` | The report for a terminal. This is the default |
+| `--format markdown` | The same report as Markdown, for a conversation or a document. The plugin uses it |
 | `--format json` | The whole result, for a script |
+| `--exit-zero` | Exit with `0` also when a critical finding exists. The plugin uses it, because Claude Code shows any other exit code as a failure |
+| `--version` | Print the version of the core |
 | `--lookup` | Also ask the OSV database about known security problems of the dependencies. Off unless you give it |
 
 | Exit code | Meaning |
@@ -464,6 +505,11 @@ It skips these folders without listing them: `.git`, `node_modules`, `.venv`, `v
   is not found.
 - **Missing files are checked only for `${CLAUDE_SKILL_DIR}/...` paths and Markdown
   links** in `SKILL.md`. A file name written as plain text is not checked.
+- **Inside Claude Code the report passes through the model.** The skill tells it to
+  show the report unchanged, and nothing in code enforces that. When it matters, open
+  the output of the command in the conversation, or run the core from a terminal.
+- **The plugin and the core have separate versions.** Nothing checks that they match,
+  and a newer core is installed by hand with the same `pip` command.
 - **No model runs.** Nothing that needs judgment is checked. That includes whether a
   skill does what its description says, and whether private data, content from outside
   and a way out meet in one agent. The capability map gives you the facts to judge the
